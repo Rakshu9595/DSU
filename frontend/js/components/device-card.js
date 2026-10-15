@@ -1,0 +1,4 @@
+import { escapeHTML } from "../core/ui.js";
+export function deviceCard(device) {
+  return `<article class="card-surface feature-card device-card" data-category="${escapeHTML(device.category)}"><div class="d-flex justify-content-between"><div class="icon-tile"><i class="bi bi-${escapeHTML(device.icon || "plug")}"></i></div><span class="badge-soft ${device.status === "Verified" ? "badge-success" : "badge-warning"}">${escapeHTML(device.status)}</span></div><h3 class="h6 mt-3 mb-1">${escapeHTML(device.name)}</h3><div class="small text-muted">${escapeHTML(device.category)}</div><div class="d-flex justify-content-between mt-3 small"><span>Estimated power</span><strong>${Number(device.watts).toLocaleString()} W</strong></div><div class="small text-muted mt-2">Detection confidence ${Number(device.confidence)}%</div><button class="btn-outline-soft w-100 mt-3" data-edit-device="${escapeHTML(device.id)}">Review device</button></article>`;
+}

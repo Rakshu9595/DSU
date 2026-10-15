@@ -1,0 +1,8 @@
+.dashboard-grid { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr); gap:18px; }
+.chart-frame { height:300px; position:relative; }
+.project-row { display:flex; align-items:center; gap:14px; padding:13px 0; border-bottom:1px solid var(--border); }
+.project-row:last-child { border-bottom:0; }
+.project-avatar { display:grid; width:42px; height:42px; flex:none; place-items:center; color:var(--cyan); background:var(--surface-3); border-radius:12px; }
+.recommendation-mini { display:flex; gap:12px; padding:13px 0; border-bottom:1px solid var(--border); }
+.recommendation-mini:last-child { border:0; }
+.quick-actions { display:flex; flex-wrap:wrap; gap:9px; }

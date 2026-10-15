@@ -1,0 +1,7 @@
+.twin-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+.twin-stage { position:relative; min-height:560px; overflow:hidden; background:radial-gradient(ellipse at 50% 40%,#172b48,#080d19 74%); border:1px solid var(--border); border-radius:18px; }
+.twin-stage canvas { position:absolute; inset:0; width:100%; height:100%; }
+.twin-tools { position:absolute; z-index:2; top:14px; left:14px; display:flex; flex-wrap:wrap; gap:8px; }
+.twin-tools button { padding:8px 11px; color:var(--text); background:rgb(16 24 39 / 85%); border:1px solid var(--border); border-radius:10px; }
+.twin-panel { align-self:start; }
+@media(max-width:920px){.twin-layout{grid-template-columns:1fr}.twin-stage{min-height:420px}}

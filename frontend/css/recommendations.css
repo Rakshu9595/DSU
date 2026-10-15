@@ -1,0 +1,6 @@
+.recommendation-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.recommendation-card { padding:22px; transition:transform .22s ease,border-color .22s ease; }
+.recommendation-card:hover { transform:translateY(-4px); border-color:var(--primary); }
+.savings-number { font:800 1.65rem Manrope,sans-serif; color:var(--green); letter-spacing:-.04em; }
+@media(max-width:950px){.recommendation-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.recommendation-grid{grid-template-columns:1fr}}

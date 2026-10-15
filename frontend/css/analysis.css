@@ -1,0 +1,5 @@
+.analysis-visual { display:grid; min-height:280px; place-items:center; overflow:hidden; border:1px solid var(--border); border-radius:15px; background:radial-gradient(ellipse at 50% 55%,#263957,#101827 68%); }
+.analysis-room { position:relative; width:80%; height:200px; border:2px solid rgb(34 211 238 / 35%); background:linear-gradient(150deg,#293b58,#18263b); transform:perspective(800px) rotateX(5deg); }
+.analysis-box { position:absolute; border:2px solid var(--green); border-radius:4px; box-shadow:0 0 15px rgb(52 211 153 / 20%); }
+.analysis-box span { position:absolute; left:-2px; top:-24px; white-space:nowrap; padding:2px 7px; color:#07111c; background:var(--green); font-size:.68rem; font-weight:700; }
+.detection-list { max-height:380px; overflow:auto; }
