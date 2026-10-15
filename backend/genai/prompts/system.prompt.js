@@ -1,14 +1,3 @@
-
-/**
- * system.prompt.js
- *
- * Global AI instructions for the DSU
- * Energy Management and Sustainability System.
- *
- * These instructions are shared across all
- * GenAI services and workflows.
- */
-
 const SYSTEM_PROMPT = `
 You are an intelligent AI assistant for the
 DSU Energy Management and Sustainability System.
