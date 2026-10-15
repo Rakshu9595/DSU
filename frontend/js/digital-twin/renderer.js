@@ -1,6 +1,6 @@
 import { createDigitalTwin } from "./scene-manager.js";
-export async function initializeTwin(canvas) {
-  try { return await createDigitalTwin(canvas); }
+export async function initializeTwin(canvas, sceneData = null) {
+  try { return await createDigitalTwin(canvas,sceneData); }
   catch (error) {
     const message = document.createElement("div");
     message.className = "position-absolute top-50 start-50 translate-middle text-center p-4";

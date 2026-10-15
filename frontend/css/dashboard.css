@@ -6,3 +6,24 @@
 .recommendation-mini { display:flex; gap:12px; padding:13px 0; border-bottom:1px solid var(--border); }
 .recommendation-mini:last-child { border:0; }
 .quick-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.dashboard-grid > .card-surface { transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+.dashboard-grid > .card-surface:hover { transform:translateY(-2px); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); box-shadow:0 16px 38px rgb(2 6 23 / 12%); }
+.chart-range { min-width:68px; justify-content:center; padding:7px 10px; font-size:.76rem; }
+.chart-range.active { color:#fff; background:var(--primary); border-color:var(--primary); }
+.chart-accessible-note { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+.skeleton-card { min-height:142px; }
+.skeleton-line { display:block; height:10px; border-radius:99px; background:linear-gradient(90deg,var(--surface-3),color-mix(in srgb,var(--surface-3) 60%,var(--text)),var(--surface-3)); background-size:200% 100%; animation:skeleton-shimmer 1.45s linear infinite; }
+.skeleton-value { width:42%; height:28px; margin:16px 0 12px; }
+@keyframes skeleton-shimmer { to { background-position:-200% 0; } }
+.activity-timeline { display:grid; gap:0; }
+.activity-item { position:relative; display:flex; gap:12px; padding:10px 0; }
+.activity-item:not(:last-child)::before { position:absolute; content:""; left:17px; top:44px; bottom:-5px; width:1px; background:var(--border); }
+.activity-icon { z-index:1; display:grid; flex:none; width:35px; height:35px; place-items:center; color:var(--cyan); background:var(--surface-3); border-radius:11px; }
+.activity-item strong,.activity-item span:not(.activity-icon) { display:block; }
+.activity-item strong { font-size:.88rem; }
+.activity-item div > span { margin-top:2px; color:var(--muted); font-size:.76rem; }
+.dashboard-spotlight { display:flex; flex-direction:column; align-items:flex-start; justify-content:center; background:radial-gradient(ellipse at top right,color-mix(in srgb,var(--primary) 14%,transparent),transparent 65%),var(--surface); }
+.dashboard-chart-data { margin-top:12px; color:var(--muted); font-size:.82rem; }
+.dashboard-chart-data summary { width:max-content; cursor:pointer; color:var(--primary); }
+.dashboard-chart-data .table { margin:10px 0 0; color:var(--text); --bs-table-bg:transparent; --bs-table-color:var(--text); --bs-table-border-color:var(--border); }
+@media (prefers-reduced-motion:reduce) { .skeleton-line { animation:none; } .dashboard-grid > .card-surface { transition:none; } }

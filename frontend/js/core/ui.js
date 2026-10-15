@@ -42,6 +42,7 @@ export function initCommonUi() {
     const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
     document.documentElement.dataset.theme = next;
     localStorage.setItem("visiontwin-theme", next);
+    window.dispatchEvent(new CustomEvent("visiontwin:themechange", { detail: { theme: next } }));
     toast(`${next === "light" ? "Light" : "Dark"} theme enabled`);
   });
   const navToggle = document.querySelector("#navToggle");
@@ -58,10 +59,29 @@ export function initCommonUi() {
   }
   const sidebar = document.querySelector("#appSidebar");
   const sidebarToggle = document.querySelector("#sidebarToggle");
+  const sidebarBackdrop = document.querySelector("#sidebarBackdrop");
+  const appShellElement = document.querySelector(".app-shell");
+  const mobileSidebar = window.matchMedia("(max-width: 760px)");
+  sidebarToggle?.setAttribute("aria-expanded",String(!mobileSidebar.matches));
+  const closeSidebar = () => {
+    sidebar?.classList.remove("open");
+    appShellElement?.classList.remove("sidebar-collapsed");
+    sidebarToggle?.setAttribute("aria-expanded",String(!mobileSidebar.matches));
+    sidebarBackdrop?.classList.remove("visible");
+  };
   sidebarToggle?.addEventListener("click", () => {
-    const open = sidebar?.classList.toggle("open") ?? false;
-    sidebarToggle.setAttribute("aria-expanded", String(open));
+    if (mobileSidebar.matches) {
+      const open = sidebar?.classList.toggle("open") ?? false;
+      sidebarToggle.setAttribute("aria-expanded", String(open));
+      sidebarBackdrop?.classList.toggle("visible",open);
+    } else {
+      const collapsed=appShellElement?.classList.toggle("sidebar-collapsed")??false;
+      sidebarToggle.setAttribute("aria-expanded",String(!collapsed));
+    }
   });
+  sidebarBackdrop?.addEventListener("click", closeSidebar);
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeSidebar(); });
+  mobileSidebar.addEventListener("change",closeSidebar);
   const currentPage = location.pathname.split("/").pop()?.replace(".html", "");
   document.querySelectorAll(".sidebar-link").forEach((link) => {
     if (link.getAttribute("href") === `${currentPage}.html`) link.classList.add("active");
@@ -78,7 +98,7 @@ export function initCommonUi() {
 }
 
 export function appShell(pageTitle) {
-  return `<div class="app-shell"><aside class="app-sidebar" id="appSidebar"><div class="sidebar-brand"><a class="brand" href="dashboard.html"><span class="brand-mark"><i class="bi bi-soundwave"></i></span>VisionTwin</a></div><div class="sidebar-label">Workspace</div><nav class="sidebar-nav">${["dashboard","projects","devices","energy-analysis","digital-twin"].map((name) => `<a class="sidebar-link" href="${name}.html"><i class="bi bi-${icons[name]}"></i>${name.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase())}</a>`).join("")}</nav><div class="sidebar-label">Insights</div><nav class="sidebar-nav">${["recommendations","reports"].map((name) => `<a class="sidebar-link" href="${name}.html"><i class="bi bi-${icons[name]}"></i>${name[0].toUpperCase()}${name.slice(1)}</a>`).join("")}</nav><div class="sidebar-label">Account</div><nav class="sidebar-nav"><a class="sidebar-link" href="settings.html"><i class="bi bi-gear"></i>Settings</a></nav><div class="mt-auto p-2 pt-4"><div class="card-surface p-3"><span class="demo-label">DEMO WORKSPACE</span><p class="small mb-0 mt-2">Sample data only</p></div></div></aside><main class="app-main"><header class="app-topbar"><div class="d-flex align-items-center gap-3"><button class="btn-quiet p-2" id="sidebarToggle" aria-label="Toggle sidebar" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><span class="fw-semibold">${pageTitle}</span></div><div class="d-flex align-items-center gap-2"><input class="form-control topbar-search" style="width:220px" type="search" placeholder="Search…"><button class="btn-quiet" id="themeToggle" aria-label="Toggle theme"><i class="bi bi-circle-half"></i></button><a class="btn-quiet" href="settings.html" aria-label="Settings"><i class="bi bi-person-circle fs-5"></i></a></div></header><div class="app-content page-enter" id="pageContent"></div></main></div>`;
+  return `<div class="app-shell"><button class="sidebar-backdrop" id="sidebarBackdrop" tabindex="-1" aria-label="Close navigation"></button><aside class="app-sidebar" id="appSidebar"><div class="sidebar-brand"><a class="brand" href="dashboard.html"><span class="brand-mark"><i class="bi bi-soundwave"></i></span>VisionTwin</a></div><div class="sidebar-label">Workspace</div><nav class="sidebar-nav">${["dashboard","projects","devices","energy-analysis","digital-twin"].map((name) => `<a class="sidebar-link" href="${name}.html"><i class="bi bi-${icons[name]}"></i>${name.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase())}</a>`).join("")}</nav><div class="sidebar-label">Insights</div><nav class="sidebar-nav">${["recommendations","reports"].map((name) => `<a class="sidebar-link" href="${name}.html"><i class="bi bi-${icons[name]}"></i>${name[0].toUpperCase()}${name.slice(1)}</a>`).join("")}</nav><div class="sidebar-label">Account</div><nav class="sidebar-nav"><a class="sidebar-link" href="settings.html"><i class="bi bi-gear"></i>Settings</a></nav><div class="mt-auto p-2 pt-4"><div class="card-surface p-3"><span class="demo-label">DEMO WORKSPACE</span><p class="small mb-0 mt-2">Sample data only</p></div></div></aside><main class="app-main"><header class="app-topbar"><div class="d-flex align-items-center gap-3"><button class="btn-quiet p-2" id="sidebarToggle" aria-label="Toggle sidebar" aria-controls="appSidebar" aria-expanded="false"><i class="bi bi-list fs-5"></i></button><span class="fw-semibold">${pageTitle}</span></div><div class="d-flex align-items-center gap-2"><input class="form-control topbar-search" style="width:220px" type="search" placeholder="Search…"><button class="btn-quiet" id="themeToggle" aria-label="Toggle theme"><i class="bi bi-circle-half"></i></button><a class="btn-quiet" href="settings.html" aria-label="Settings"><i class="bi bi-person-circle fs-5"></i></a></div></header><div class="app-content page-enter" id="pageContent"></div></main></div>`;
 }
 
 export function escapeHTML(value) {
