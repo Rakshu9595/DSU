@@ -1,23 +1,3 @@
-
-/**
- * fallback.service.js
- *
- * Safe fallback responses for the DSU
- * Energy Management and Sustainability System.
- *
- * Handles:
- * - Gemini API failures
- * - AI request timeouts
- * - Empty or invalid AI responses
- * - Missing project data
- * - Insufficient evidence
- * - Unsupported questions
- * - AI service unavailability
- *
- * Does not fabricate energy values or
- * return confidential backend errors.
- */
-
 const FALLBACK_TYPES = Object.freeze({
   API_ERROR: "API_ERROR",
   TIMEOUT: "TIMEOUT",

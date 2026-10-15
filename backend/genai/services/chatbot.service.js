@@ -1,5 +1,3 @@
-
-
 const {
   buildChatbotPrompt
 } = require("../prompts/chatbot.prompt");

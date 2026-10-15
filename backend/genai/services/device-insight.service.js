@@ -1,18 +1,3 @@
-
-/**
- * device-insight.service.js
- *
- * Generates AI-powered appliance insights for the
- * DSU Energy Management and Sustainability System.
- *
- * Responsibilities:
- * 1. Validate device and energy context.
- * 2. Prepare the device explanation prompt.
- * 3. Send the prompt to the configured LLM.
- * 4. Check the generated response.
- * 5. Return a structured device insight result.
- */
-
 const {
   buildDeviceExplanationPrompt
 } = require("../prompts/device-explanation.prompt");
