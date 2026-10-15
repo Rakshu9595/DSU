@@ -1,13 +1,3 @@
-
-/**
- * scenario-analysis.prompt.js
- *
- * Builds AI prompts to explain baseline and
- * proposed energy consumption scenarios.
- *
- * DSU Energy Management and Sustainability System
- */
-
 /**
  * Builds a scenario analysis prompt.
  *

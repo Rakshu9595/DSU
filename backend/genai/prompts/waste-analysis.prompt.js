@@ -1,4 +1,3 @@
-
 /**
  * Builds an energy waste analysis prompt.
  *

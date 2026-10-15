@@ -1,13 +1,3 @@
-
-/**
- * sustainability-report.prompt.js
- *
- * Builds prompts for generating sustainability
- * report narratives using trusted backend data.
- *
- * DSU Energy Management and Sustainability System
- */
-
 /**
  * Builds a sustainability report prompt.
  *

@@ -1,14 +1,3 @@
-
-/**
- * chatbot.prompt.js
- *
- * Generates prompts for the AI chatbot in the
- * DSU Energy Management and Sustainability System.
- *
- * The chatbot answers questions using trusted
- * project data provided by the backend.
- */
-
 /**
  * Builds the chatbot prompt.
  *

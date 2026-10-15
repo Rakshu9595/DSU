@@ -1,14 +1,3 @@
-
-/**
- * recommendations.prompt.js
- *
- * Builds prompts for generating energy-saving
- * recommendations in the DSU Energy Management
- * and Sustainability System.
- *
- * Uses trusted backend context to guide the AI.
- */
-
 /**
  * Builds an energy-saving recommendation prompt.
  *

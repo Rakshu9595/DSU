@@ -1,13 +1,3 @@
-
-/**
- * device-explanation.prompt.js
- *
- * Builds AI prompts to explain appliance-level
- * electricity consumption and energy usage.
- *
- * DSU Energy Management and Sustainability System
- */
-
 /**
  * Creates a prompt for explaining device energy usage.
  *
