@@ -1,81 +1,307 @@
-import { mountApp, escapeHTML, toast } from "../core/ui.js";
-import { appConfig } from "../config/app-config.js";
-import { deviceService } from "../services/device.service.js";
-import { calculateEnergy, estimateCost, estimateDeviceSavings } from "../energy/energy-calculator.js";
-import { formatCurrency, formatNumber } from "../utils/format-number.js";
-import { renderEnergyCharts } from "../energy/energy-charts.js";
-import { scenarioService } from "../services/scenario.service.js";
+import { auth } from '../core/auth.js';
+import { api } from '../core/api-client.js';
+import { UI } from '../core/ui.js';
+import { renderNavbar } from '../components/navbar.js';
+import { ChartRenderer } from '../components/chart-renderer.js';
 
-mountApp("Energy analysis",`<div class="app-page-title"><div><span class="demo-label">${appConfig.mode==="demo"?"ESTIMATES · SAMPLE DEVICES":"MODELED ESTIMATES"}</span><h1 class="mt-3">Energy analysis</h1><p>Transparent calculations from device ratings and runtime assumptions — not meter readings.</p></div></div>
-<section class="energy-hero" id="energyMetrics" aria-live="polite" aria-busy="true"><p class="small text-muted">Loading energy inputs…</p></section>
-<div class="energy-charts">
-<section class="card-surface panel"><div class="panel-heading"><div><h2>Estimated daily trend</h2><small class="text-muted">kWh · scaled to the current device/runtime estimate</small></div></div><div class="chart-container"><canvas id="dailyEnergyChart" aria-label="Estimated energy trend line"></canvas></div><details class="chart-data" data-chart-table="dailyEnergyChart"></details></section>
-<section class="card-surface panel"><div class="panel-heading"><h2>Energy mix</h2><span class="badge-soft">Estimated share</span></div><div class="chart-container"><canvas id="energyMixChart" aria-label="Device energy mix doughnut chart"></canvas></div><details class="chart-data" data-chart-table="energyMixChart"></details></section>
-<section class="card-surface panel"><div class="panel-heading"><div><h2>By appliance</h2><small class="text-muted">Estimated kWh/day</small></div></div><div class="chart-container"><canvas id="deviceEnergyChart" aria-label="Appliance energy bar chart"></canvas></div><details class="chart-data" data-chart-table="deviceEnergyChart"></details></section>
-<section class="card-surface panel"><div class="panel-heading"><h2>Adjust assumptions</h2><span class="badge-soft">Saved in this browser</span></div><label class="form-label" for="tariffInput">Electricity tariff (₹ per kWh)</label><input class="form-control mb-1" id="tariffInput" type="number" min="0" step=".1" value="9" inputmode="decimal" aria-describedby="tariffHelp tariffError"><div class="small text-muted mb-3" id="tariffHelp">Used to calculate estimated costs and scenario comparisons.</div><div id="tariffError" class="small text-danger mb-2" role="alert" hidden>Enter a valid non-negative tariff.</div><label class="form-label" for="runtimeInput">Runtime multiplier <span id="runtimeLabel" class="text-info"></span></label><input class="form-range" id="runtimeInput" type="range" min="50" max="150" value="100"><div class="small text-muted">Scaled around the listed device hours/day. Runtime is capped at 24 hours per device.</div><button class="btn-primary-soft mt-3" id="saveAssumptions">Save assumptions</button></section></div>
-<section class="card-surface panel mt-3"><div class="panel-heading"><div><h2>Compare scenarios</h2><small class="text-muted">Calculated from this page’s baseline and tariff assumptions</small></div><span class="badge-soft">Illustrative potential only</span></div><div id="scenarioRows" aria-live="polite"></div><p class="small text-muted mb-0 mt-3">Carbon estimate uses a simplified 0.7 kg CO₂e/kWh factor. Actual emissions vary by grid and time. Scenario reductions are assumptions, not guaranteed savings.</p></section>`);
+let currentProject = null;
+let currentEstimate = null;
+let currentDevices = [];
+let scenarioProposals = {}; // { [deviceId]: proposedHours }
 
-let devices,scenarios,loadError;
-try {
-  [devices,scenarios]=await Promise.all([deviceService.list(),scenarioService.list()]);
-  if(!Array.isArray(devices)||!Array.isArray(scenarios))throw new TypeError("Energy inputs must be returned as device and scenario lists.");
-  devices.forEach((item)=>calculateEnergy(item.watts,item.hours));
-} catch(error) {
-  loadError=error;
-  document.querySelector("#energyMetrics").setAttribute("aria-busy","false");
-  document.querySelector("#energyMetrics").innerHTML=`<div class="alert alert-warning bg-transparent" role="alert">Energy analysis could not load its inputs: ${escapeHTML(error.message)}</div>`;
-  document.querySelector("#scenarioRows").textContent="Scenario comparisons are unavailable until the inputs load.";
-  ["tariffInput","runtimeInput","saveAssumptions"].forEach((id)=>{document.querySelector(`#${id}`).disabled=true;});
-  toast(`Energy analysis unavailable: ${error.message}`,"error");
-}
-if(!loadError) {
-const tariffInput=document.querySelector("#tariffInput");
-const runtimeInput=document.querySelector("#runtimeInput");
-tariffInput.value=localStorage.getItem("visiontwin-tariff")||"9";
-runtimeInput.value=localStorage.getItem("visiontwin-runtime-multiplier")||"100";
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await auth.requireAuth();
+  if (!user) return;
 
-function validTariff() {
-  const tariff=Number(tariffInput.value);
-  const valid=tariffInput.value.trim()!==""&&Number.isFinite(tariff)&&tariff>=0;
-  tariffInput.setAttribute("aria-invalid",String(!valid));
-  document.querySelector("#tariffError").hidden=valid;
-  return valid?tariff:null;
-}
-function update() {
-  document.querySelector("#energyMetrics").setAttribute("aria-busy","false");
-  const tariff=validTariff();
-  const multiplier=Number(runtimeInput.value)/100;
-  const daily=devices.reduce((sum,item)=>sum+calculateEnergy(item.watts,Math.min(24,item.hours*multiplier)),0);
-  const monthly=daily*30;
-  document.querySelector("#runtimeLabel").textContent=`${runtimeInput.value}%`;
-  document.querySelector("#energyMetrics").innerHTML=[
-    ["Daily estimate",`${formatNumber(daily)} kWh`,"Device load × adjusted hours","lightning-charge"],
-    ["Monthly estimate",`${formatNumber(monthly)} kWh`,"Daily estimate × 30 days","calendar3"],
-    ["Monthly cost",tariff===null?"—":formatCurrency(estimateCost(monthly,tariff)),"At current tariff assumption","currency-rupee"],
-    ["Carbon estimate",`${formatNumber(monthly*.7)} kg`,"0.7 kg CO₂e/kWh assumption","cloud"]
-  ].map(([label,value,detail,icon])=>`<article class="card-surface metric-card"><div class="small text-muted">${label}</div><div class="metric-value">${escapeHTML(value)}</div><div class="small text-muted"><i class="bi bi-${icon} text-info me-1"></i>${escapeHTML(detail)}</div></article>`).join("");
-  renderEnergyCharts(devices,multiplier);
-  document.querySelector("#scenarioRows").innerHTML=scenarios.map((item,index)=>{
-    const reduction=Number(item.reductionPercent);
-    const affectedDevices=Array.isArray(item.affectedDeviceIds)?devices.filter((device)=>item.affectedDeviceIds.includes(device.id)):[];
-    const estimate=Number.isFinite(reduction)?estimateDeviceSavings(devices,{deviceIds:item.affectedDeviceIds,reductionPercent:reduction,runtimeMultiplier:multiplier,tariff:tariff??0}):null;
-    const scenarioDaily=estimate?daily-estimate.savedDailyKwh:Number(item.dailyKwh);
-    const validScenario=Number.isFinite(scenarioDaily)&&scenarioDaily>=0;
-    const savings=tariff===null||!validScenario?null:estimate?estimate.monthlySavings:Math.max(0,(daily-scenarioDaily)*30*tariff);
-    const title=escapeHTML(item.name||`Scenario ${index+1}`);
-    const target=Array.isArray(item.affectedDeviceIds)&&item.affectedDeviceIds.length?affectedDevices.length?` on ${affectedDevices.map((device)=>escapeHTML(device.name)).join(", ")}`:" on unavailable devices":" of modeled total";
-    const scenarioLabel=index===0?"Baseline estimate":`Potential estimate${Number.isFinite(reduction)?` · ${Math.max(0,Math.min(100,reduction))}%${target}`:""}`;
-    const savingsLabel=!validScenario?"Not available":tariff===null?"Tariff required":index?`~${formatCurrency(savings)}/mo`:"Baseline";
-    return `<div class="scenario-row"><div><strong>${title}</strong><div class="small text-muted">${scenarioLabel}</div></div><span class="small">${validScenario?`${formatNumber(scenarioDaily,2)} kWh/day`:"Not provided"}</span><strong class="${index?"text-success":"text-muted"}">${savingsLabel}</strong></div>`;
-  }).join("");
-}
-runtimeInput.addEventListener("input",update);
-tariffInput.addEventListener("input",update);
-document.querySelector("#saveAssumptions").addEventListener("click",()=>{
-  if(validTariff()===null){toast("Tariff must be a valid non-negative number.","error");tariffInput.focus();return;}
-  localStorage.setItem("visiontwin-tariff",String(Number(tariffInput.value)));
-  localStorage.setItem("visiontwin-runtime-multiplier",runtimeInput.value);
-  toast("Assumptions saved in this browser.","success");
+  await renderNavbar();
+  await loadProjects();
+  initListeners();
 });
-update();
+
+async function loadProjects() {
+  try {
+    const res = await api.get('/projects');
+    const projects = Array.isArray(res) ? res : (res?.projects || res?.data || []);
+    const select = document.getElementById('energy-project-select');
+    select.innerHTML = '';
+
+    if (projects.length === 0) {
+      select.innerHTML = '<option value="">No projects found</option>';
+      return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('projectId') || localStorage.getItem('vt_active_project');
+    let defaultProj = projects[0];
+
+    projects.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p._id;
+      opt.textContent = `${p.name} (${p.roomType.replace('_', ' ')})`;
+      if (targetId && p._id === targetId) {
+        defaultProj = p;
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    currentProject = defaultProj;
+    select.value = defaultProj._id;
+    localStorage.setItem('vt_active_project', defaultProj._id);
+
+    // Set tariff input
+    document.getElementById('tariff-input').value = currentProject.electricityTariffPerKwh || 8.0;
+
+    await loadEnergyData(defaultProj._id);
+  } catch (err) {
+    UI.toast('Failed to load projects: ' + err.message, 'error');
+  }
+}
+
+async function loadEnergyData(projectId) {
+  try {
+    const [estimateRes, devicesRes] = await Promise.all([
+      api.get(`/energy/project/${projectId}`),
+      api.get(`/devices?projectId=${projectId}`)
+    ]);
+
+    currentEstimate = estimateRes.estimate || estimateRes;
+    currentDevices = devicesRes.devices || [];
+
+    renderKPIs();
+    renderCharts();
+    renderTable();
+    initScenarioTab();
+  } catch (err) {
+    UI.toast('Failed to load energy analysis: ' + err.message, 'error');
+  }
+}
+
+function renderKPIs() {
+  const dailyKwh = currentEstimate?.totalDailyEnergyKwh || 0;
+  const monthlyKwh = currentEstimate?.totalMonthlyEnergyKwh || 0;
+  const monthlyCost = currentEstimate?.estimatedMonthlyCost || 0;
+  const carbonFactor = currentEstimate?.carbonEmissionsFactor || 0.82;
+  const carbonKg = currentEstimate?.estimatedCarbonEmissionsKg || monthlyKwh * carbonFactor;
+
+  const activeCount = currentDevices.filter((d) => !d.isFitting).length;
+
+  document.getElementById('kpi-daily-kwh').innerHTML = `${dailyKwh.toFixed(2)} <span class="fs-6 fw-normal text-muted">kWh</span>`;
+  document.getElementById('kpi-daily-cost').textContent = `₹${((monthlyCost / 30) || 0).toFixed(1)} / day`;
+  document.getElementById('kpi-monthly-kwh').innerHTML = `${monthlyKwh.toFixed(1)} <span class="fs-6 fw-normal text-muted">kWh</span>`;
+  document.getElementById('kpi-monthly-cost').textContent = `₹${Math.round(monthlyCost).toLocaleString()}`;
+  document.getElementById('kpi-active-appliances').textContent = `${activeCount} active energy-drawing appliances`;
+  document.getElementById('kpi-carbon-kg').innerHTML = `${carbonKg.toFixed(1)} <span class="fs-6 fw-normal text-muted">kg CO₂</span>`;
+}
+
+function renderCharts() {
+  const breakdown = currentEstimate?.deviceBreakdown || [];
+  ChartRenderer.renderEnergyDoughnut('chart-energy-doughnut', breakdown);
+  ChartRenderer.renderConsumptionBar('chart-cost-bar', breakdown);
+}
+
+function renderTable() {
+  const tbody = document.getElementById('breakdown-table-body');
+  const breakdown = currentEstimate?.deviceBreakdown || [];
+
+  if (breakdown.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-4 text-muted">
+          No energy-consuming devices detected in this project yet.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = breakdown
+    .map((b) => {
+      const isVerified = b.ratingSource === 'user_entered';
+      const sourceBadge = isVerified
+        ? `<span class="badge bg-success-subtle text-success border border-success-subtle">User Entered</span>`
+        : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle">AI Estimate</span>`;
+
+      return `
+        <tr>
+          <td>
+            <div class="fw-semibold text-light">${escapeHtml(b.name)}</div>
+            <div class="text-dim small">${b.isVariablePower ? 'Variable Load' : 'Fixed Load'}</div>
+          </td>
+          <td><span class="badge bg-dark border border-secondary text-capitalize">${(b.category || 'other').replace('_', ' ')}</span></td>
+          <td class="text-end font-monospace text-emerald fw-semibold">${b.powerRatingWatts} W</td>
+          <td class="text-end font-monospace">${b.dailyUsageHours} h</td>
+          <td class="text-end font-monospace">${b.dailyEnergyKwh.toFixed(2)}</td>
+          <td class="text-end font-monospace text-light fw-bold">${b.monthlyEnergyKwh.toFixed(1)}</td>
+          <td class="text-end font-monospace text-warning fw-bold">₹${Math.round(b.monthlyCost).toLocaleString()}</td>
+          <td class="text-center">${sourceBadge}</td>
+        </tr>
+      `;
+    })
+    .join('');
+}
+
+function initScenarioTab() {
+  const container = document.getElementById('scenario-device-rows');
+  container.innerHTML = '';
+
+  const activeDevices = currentDevices.filter((d) => !d.isFitting);
+  if (activeDevices.length === 0) {
+    container.innerHTML = '<div class="text-muted small">No active appliances available to simulate.</div>';
+    return;
+  }
+
+  // Initialize proposals with existing hours
+  scenarioProposals = {};
+  activeDevices.forEach((d) => {
+    scenarioProposals[d._id] = d.dailyUsageHours || 8;
+  });
+
+  activeDevices.forEach((dev) => {
+    const card = document.createElement('div');
+    card.className = 'p-3 rounded bg-card border border-secondary border-opacity-25';
+    card.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+          <span class="fw-semibold text-light me-2">${escapeHtml(dev.displayName)}</span>
+          <span class="badge bg-dark border border-secondary text-emerald font-monospace">${dev.powerRatingWatts} W</span>
+        </div>
+        <div class="text-end">
+          <span class="text-muted small">Baseline: ${dev.dailyUsageHours || 8} h/d &nbsp;→&nbsp; </span>
+          <span class="text-emerald fw-bold font-monospace" id="prop-lbl-${dev._id}">${scenarioProposals[dev._id]} h/d</span>
+        </div>
+      </div>
+      <input
+        type="range"
+        class="form-range scen-slider"
+        id="scen-slider-${dev._id}"
+        data-device-id="${dev._id}"
+        min="0"
+        max="24"
+        step="0.5"
+        value="${scenarioProposals[dev._id]}"
+      />
+    `;
+    container.appendChild(card);
+  });
+
+  // Slider events
+  container.querySelectorAll('.scen-slider').forEach((slider) => {
+    slider.addEventListener('input', (e) => {
+      const devId = e.target.getAttribute('data-device-id');
+      const val = parseFloat(e.target.value);
+      scenarioProposals[devId] = val;
+      document.getElementById(`prop-lbl-${devId}`).textContent = `${val} h/d`;
+      recalculateScenario();
+    });
+  });
+
+  recalculateScenario();
+}
+
+function recalculateScenario() {
+  const tariff = Number(currentProject?.electricityTariffPerKwh || 8.0);
+  const carbonFactor = 0.82;
+
+  let baselineMonthlyKwh = 0;
+  let proposedMonthlyKwh = 0;
+
+  currentDevices.forEach((dev) => {
+    if (dev.isFitting) return;
+    const watts = Number(dev.powerRatingWatts || 0);
+    const baseHours = Number(dev.dailyUsageHours || 0);
+    const propHours = scenarioProposals[dev._id] !== undefined ? scenarioProposals[dev._id] : baseHours;
+    const days = Number(dev.daysUsedPerMonth || 30);
+
+    baselineMonthlyKwh += (watts * baseHours * days) / 1000;
+    proposedMonthlyKwh += (watts * propHours * days) / 1000;
+  });
+
+  const diffKwh = Math.max(0, baselineMonthlyKwh - proposedMonthlyKwh);
+  const diffCost = diffKwh * tariff;
+  const diffCarbon = diffKwh * carbonFactor;
+
+  document.getElementById('scen-base-kwh').textContent = `${baselineMonthlyKwh.toFixed(1)} kWh`;
+  document.getElementById('scen-prop-kwh').textContent = `${proposedMonthlyKwh.toFixed(1)} kWh`;
+  document.getElementById('scen-diff-kwh').textContent = `-${diffKwh.toFixed(1)} kWh`;
+  document.getElementById('scen-diff-cost').textContent = `₹${Math.round(diffCost).toLocaleString()} / month`;
+  document.getElementById('scen-diff-carbon').textContent = `Reduces ${diffCarbon.toFixed(1)} kg CO₂ emissions`;
+
+  ChartRenderer.renderScenarioComparison(
+    'chart-scenario-compare',
+    { monthlyEnergyKwh: baselineMonthlyKwh, monthlyCost: baselineMonthlyKwh * tariff },
+    { monthlyEnergyKwh: proposedMonthlyKwh, monthlyCost: proposedMonthlyKwh * tariff }
+  );
+}
+
+function initListeners() {
+  // Project switch
+  document.getElementById('energy-project-select')?.addEventListener('change', async (e) => {
+    const projId = e.target.value;
+    if (!projId) return;
+    localStorage.setItem('vt_active_project', projId);
+    try {
+      const p = await api.get(`/projects/${projId}`);
+      currentProject = p.project;
+      document.getElementById('tariff-input').value = currentProject.electricityTariffPerKwh || 8.0;
+      await loadEnergyData(projId);
+    } catch (err) {
+      UI.toast('Failed to load project: ' + err.message, 'error');
+    }
+  });
+
+  // Tariff update button
+  document.getElementById('btn-save-tariff')?.addEventListener('click', async () => {
+    if (!currentProject) return;
+    const tariff = parseFloat(document.getElementById('tariff-input').value);
+    if (!tariff || tariff <= 0) {
+      UI.toast('Please enter a valid positive tariff (₹/kWh)', 'error');
+      return;
+    }
+
+    const btn = document.getElementById('btn-save-tariff');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    try {
+      await api.put(`/projects/${currentProject._id}`, {
+        electricityTariffPerKwh: tariff
+      });
+      currentProject.electricityTariffPerKwh = tariff;
+      UI.toast(`Tariff updated to ₹${tariff.toFixed(2)} / kWh!`, 'success');
+      await loadEnergyData(currentProject._id);
+    } catch (err) {
+      UI.toast('Failed to update tariff: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Update Tariff';
+    }
+  });
+
+  // Recalculate all button
+  document.getElementById('btn-recalculate-all')?.addEventListener('click', async () => {
+    if (!currentProject) return;
+    const btn = document.getElementById('btn-recalculate-all');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+    try {
+      await loadEnergyData(currentProject._id);
+      UI.toast('Recalculated all energy parameters!', 'success');
+    } catch (err) {
+      UI.toast('Recalculation error: ' + err.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i> Recalculate';
+    }
+  });
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

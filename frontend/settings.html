@@ -1,1 +1,121 @@
-<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings · VisionTwin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"><link rel="stylesheet" href="css/variables.css"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/layout.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/responsive.css"></head><body><main id="appRoot"></main><div class="toast-stack" id="toastStack" aria-live="polite"></div><script type="module" src="js/pages/settings.page.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings & System Health — VisionTwin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="container-fluid px-4 py-4 max-w-7xl">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <!-- Header -->
+        <div class="mb-4">
+          <h2 class="fw-bolder mb-1">
+            <i class="bi bi-gear text-emerald me-2"></i>Settings & Diagnostic Health
+          </h2>
+          <p class="text-muted small mb-0">
+            Manage global defaults, electricity tariffs, emission coefficients, and examine model server connectivity.
+          </p>
+        </div>
+
+        <!-- User Profile Card -->
+        <div class="card bg-card border-secondary border-opacity-25 p-4 shadow-sm mb-4">
+          <h5 class="fw-bold text-light mb-3">
+            <i class="bi bi-person-badge text-emerald me-2"></i>User Profile
+          </h5>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Full Name</label>
+              <input type="text" class="form-control bg-dark border-secondary" id="set-user-name" readonly />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label text-muted small">Email Address</label>
+              <input type="email" class="form-control bg-dark border-secondary" id="set-user-email" readonly />
+            </div>
+          </div>
+        </div>
+
+        <!-- Global Calculation Defaults -->
+        <div class="card bg-card border-secondary border-opacity-25 p-4 shadow-sm mb-4">
+          <h5 class="fw-bold text-light mb-3">
+            <i class="bi bi-sliders text-emerald me-2"></i>Energy Estimation Defaults
+          </h5>
+          <form id="form-settings">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Default Electricity Tariff (₹ / kWh)</label>
+                <input type="number" class="form-control font-monospace" id="set-tariff" value="8.0" step="0.5" min="0.5" max="100" />
+                <div class="form-text small">Used as baseline fallback for newly created projects.</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Grid Carbon Factor (kg CO₂ / kWh)</label>
+                <input type="number" class="form-control font-monospace" id="set-carbon-factor" value="0.82" step="0.01" min="0.1" max="2.0" />
+                <div class="form-text small">Standard Indian regional grid average (~0.82 kg CO₂/kWh).</div>
+              </div>
+            </div>
+            <div class="text-end">
+              <button type="submit" class="btn btn-vt-primary" id="btn-save-settings">
+                <i class="bi bi-check2 me-1"></i> Save Preferences
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- System & Model Diagnostics Card -->
+        <div class="card bg-card border-secondary border-opacity-25 p-4 shadow-sm">
+          <h5 class="fw-bold text-light mb-3">
+            <i class="bi bi-activity text-emerald me-2"></i>System Infrastructure Diagnostics
+          </h5>
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between align-items-center p-3 rounded bg-dark border border-secondary border-opacity-25">
+              <div>
+                <div class="fw-semibold text-light">FastAPI YOLO Model Server</div>
+                <div class="text-dim small font-monospace">http://127.0.0.1:8000/api/health</div>
+              </div>
+              <div id="diag-model-status">
+                <span class="spinner-border spinner-border-sm text-emerald"></span>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center p-3 rounded bg-dark border border-secondary border-opacity-25">
+              <div>
+                <div class="fw-semibold text-light">Node.js Express Backend & MongoDB</div>
+                <div class="text-dim small font-monospace">http://127.0.0.1:5000/api/health</div>
+              </div>
+              <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                  <i class="bi bi-check-circle me-1"></i>Connected
+                </span>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center p-3 rounded bg-dark border border-secondary border-opacity-25">
+              <div>
+                <div class="fw-semibold text-light">Three.js WebGL Hardware Acceleration</div>
+                <div class="text-dim small">3D Canvas Engine</div>
+              </div>
+              <div>
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                  <i class="bi bi-gpu-card me-1"></i>Active
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/pages/settings.page.js"></script>
+</body>
+</html>

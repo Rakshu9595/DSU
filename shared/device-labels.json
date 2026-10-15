@@ -1,0 +1,75 @@
+{
+  "categories": {
+    "cooling": {
+      "name": "Cooling & Climate",
+      "labels": ["air_conditioner", "ceiling_fan", "exhaust_fan", "cooler", "standing_fan", "table_fan"],
+      "icon": "bi-snow"
+    },
+    "entertainment": {
+      "name": "Entertainment & Display",
+      "labels": ["television", "tv", "monitor", "projector", "speaker"],
+      "icon": "bi-tv"
+    },
+    "computing": {
+      "name": "Computing & Office",
+      "labels": ["laptop", "desktop_computer", "printer", "router", "modem"],
+      "icon": "bi-laptop"
+    },
+    "kitchen": {
+      "name": "Kitchen Appliances",
+      "labels": ["refrigerator", "microwave", "microwave_oven", "oven", "toaster", "blender", "electric_kettle", "coffee_maker"],
+      "icon": "bi-cup-hot"
+    },
+    "lighting": {
+      "name": "Lighting",
+      "labels": ["lamp", "table_lamp", "desk_lamp", "ceiling_light", "light_bulb", "tube_light"],
+      "icon": "bi-lightbulb"
+    },
+    "utility": {
+      "name": "Utility & Cleaning",
+      "labels": ["washing_machine", "iron", "clothes_iron", "vacuum_cleaner", "water_heater", "geyser", "air_purifier"],
+      "icon": "bi-plug"
+    },
+    "electrical_fittings": {
+      "name": "Switches & Sockets",
+      "labels": ["switch", "light_switch", "socket", "power_outlet", "wall_plug", "switchboard", "plug_point"],
+      "icon": "bi-toggles",
+      "isEnergyConsumer": false
+    }
+  },
+  "canonicalMap": {
+    "fan": "ceiling_fan",
+    "ceiling fan": "ceiling_fan",
+    "ceiling_fan": "ceiling_fan",
+    "ac": "air_conditioner",
+    "air conditioner": "air_conditioner",
+    "air_conditioner": "air_conditioner",
+    "fridge": "refrigerator",
+    "refrigerator": "refrigerator",
+    "tv": "television",
+    "television": "television",
+    "laptop": "laptop",
+    "computer": "desktop_computer",
+    "pc": "desktop_computer",
+    "desktop": "desktop_computer",
+    "desktop_computer": "desktop_computer",
+    "lamp": "lamp",
+    "light": "lamp",
+    "bulb": "lamp",
+    "desk lamp": "lamp",
+    "microwave": "microwave",
+    "microwave oven": "microwave",
+    "microwave_oven": "microwave",
+    "washing machine": "washing_machine",
+    "washing_machine": "washing_machine",
+    "geyser": "water_heater",
+    "water heater": "water_heater",
+    "water_heater": "water_heater",
+    "iron": "iron",
+    "router": "router",
+    "switch": "switch",
+    "socket": "socket",
+    "power outlet": "socket",
+    "plug point": "socket"
+  }
+}

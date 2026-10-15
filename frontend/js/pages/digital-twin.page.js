@@ -1,70 +1,388 @@
-import { mountApp, toast } from "../core/ui.js";
-import { initializeTwin } from "../digital-twin/renderer.js";
-import { bindTwinSelection } from "../digital-twin/interaction.js";
-import { resetCamera } from "../digital-twin/scene-editor.js";
-import { setEnergyVisualization } from "../digital-twin/energy-visualization.js";
-import { scenarioImpact } from "../digital-twin/scenario-view.js";
-import { digitalTwinService } from "../services/digital-twin.service.js";
-import { appConfig } from "../config/app-config.js";
+import { auth } from '../core/auth.js';
+import { api } from '../core/api-client.js';
+import { UI } from '../core/ui.js';
+import { renderNavbar } from '../components/navbar.js';
+import { DigitalTwinSceneManager } from '../digital-twin/scene-manager.js';
 
-mountApp("Digital twin",`<div class="app-page-title"><div><span class="demo-label">${appConfig.mode==="demo"?"PROCEDURAL 3D DEMO":"CONNECTED SCENE"}</span><h1 class="mt-3">Digital twin</h1><p>${appConfig.mode==="demo"?"Interactive illustrative room model. Objects are procedural, not AI-detected from a real video.":"Interactive model uses only room dimensions and objects returned by the configured backend."}</p></div><button id="saveScene" class="btn-outline-soft"><i class="bi bi-cloud-check"></i> Save scene</button></div><div class="twin-layout"><section class="twin-stage"><canvas id="twinCanvas" tabindex="0" role="application" aria-label="Interactive 3D room. Use mouse or touch to orbit and zoom; focus this view and press arrow keys to select devices."></canvas><div class="twin-tools"><button id="resetCamera"><i class="bi bi-arrow-counterclockwise"></i> Reset view</button><button id="energyToggle" aria-pressed="false"><i class="bi bi-lightning-charge"></i> Energy view</button></div></section><aside class="twin-panel card-surface panel"><div class="panel-heading"><h2>Selected object</h2><span class="badge-soft">${appConfig.mode==="demo"?"Demo model":"Backend model"}</span></div><p id="selectedObject" class="text-muted" aria-live="polite">Select an object in the room or use arrow keys while the 3D view is focused.</p><hr style="border-color:var(--border)"><h3 class="h6">Add appliance</h3><label class="small form-label" for="applianceKind">Procedural model</label><div class="d-flex gap-2"><select id="applianceKind" class="form-select"><option value="lamp">Floor lamp</option><option value="box">Appliance unit</option><option value="plant">Indoor plant</option></select><button id="addAppliance" class="btn-outline-soft flex-shrink-0">Add</button></div><hr style="border-color:var(--border)"><h3 class="h6">Room dimensions</h3><p class="small text-muted">Dimensions shown for this ${appConfig.mode==="demo"?"illustrative":"backend-provided"} scene (metres).</p><div class="row g-2"><div class="col"><label class="small form-label" for="roomWidth">Width</label><input id="roomWidth" class="form-control" type="number" min="2" max="12" step=".5" value="6"></div><div class="col"><label class="small form-label" for="roomDepth">Depth</label><input id="roomDepth" class="form-control" type="number" min="2" max="12" step=".5" value="4.5"></div></div><button id="applyDimensions" class="btn-outline-soft w-100 mt-3">Apply to preview</button><hr style="border-color:var(--border)"><h3 class="h6">What-if energy scenario</h3><label class="small form-label" for="scenarioReduction">Illustrative reduction <span id="scenarioLabel">0%</span></label><input id="scenarioReduction" class="form-range" type="range" min="0" max="30" value="0"><p id="scenarioImpact" class="small text-muted mb-0" aria-live="polite">Scenario values are illustrative only.</p><hr style="border-color:var(--border)"><div class="small text-muted"><i class="bi bi-mouse me-2"></i>Drag to rotate · scroll/pinch to zoom · tap an object to select · arrow keys to cycle</div></aside></div><div id="twinStatus" class="small text-muted mt-2" role="status" aria-live="polite"></div>`);
+let sceneManager = null;
+let currentProject = null;
+let currentSceneData = null;
+let selectedDeviceObject = null;
 
-const canvas=document.querySelector("#twinCanvas");
-let twin;
-let storedScene;
-try {
-  storedScene=await digitalTwinService.getScene();
-  twin=await initializeTwin(canvas,appConfig.mode==="demo"?null:storedScene);
-  const sceneDimensions=twin.getDimensions();
-  document.querySelector("#roomWidth").value=String(sceneDimensions.width);
-  document.querySelector("#roomDepth").value=String(sceneDimensions.depth);
-  document.querySelector("#twinStatus").textContent=appConfig.mode==="demo"?"Interactive procedural sample scene ready. Preview changes are not saved.":"Connected backend scene loaded.";
-  bindTwinSelection(canvas,document.querySelector("#selectedObject"));
-  document.querySelector("#resetCamera").addEventListener("click",()=>resetCamera(twin.camera,twin.controls));
-  let energyOn=false;
-  const reductionInput=document.querySelector("#scenarioReduction");
-  const updateEnergyView=()=>{
-    setEnergyVisualization(twin.models,energyOn,Number(reductionInput.value));
-    document.querySelector("#scenarioLabel").textContent=`${reductionInput.value}%`;
-    const totalWatts=twin.objects.reduce((sum,item)=>sum+(Number(item.watts)||0),0);
-    const impact=scenarioImpact(totalWatts/1000*4,Number(reductionInput.value));
-    document.querySelector("#scenarioImpact").textContent=`Illustration only: ${impact.projected.toFixed(2)} kWh/day versus ${impact.baseline.toFixed(2)} kWh/day, based on a simplified 4-hour average. Not measured usage or a guaranteed saving.`;
-  };
-  reductionInput.addEventListener("input",updateEnergyView);
-  document.querySelector("#energyToggle").addEventListener("click",(event)=>{
-    energyOn=!energyOn; updateEnergyView();
-    event.currentTarget.setAttribute("aria-pressed",String(energyOn));
-    event.currentTarget.innerHTML=`<i class="bi bi-lightning-charge"></i> ${energyOn?"Hide energy view":"Energy view"}`;
-    toast(energyOn?"Colors visualize illustrative rated power, not measured usage.":"Energy view disabled.");
-  });
-  document.querySelector("#applyDimensions").addEventListener("click",()=>{
-    const width=Number(document.querySelector("#roomWidth").value),depth=Number(document.querySelector("#roomDepth").value);
-    if(!Number.isFinite(width)||!Number.isFinite(depth)||width<2||width>12||depth<2||depth>12){toast("Room dimensions must be between 2 and 12 metres.","error");return;}
-    twin.setDimensions(width,depth);
-    document.querySelector("#twinStatus").textContent=`Preview dimensions adjusted to ${width} × ${depth} m. This change is not saved.`;
-  });
-  document.querySelector("#addAppliance").addEventListener("click",()=>{
-    const kind=document.querySelector("#applianceKind").value;
-    const count=twin.objects.filter((item)=>item.kind===kind).length;
-    const item={name:`${kind==="box"?"Appliance unit":kind==="lamp"?"Floor lamp":"Indoor plant"} ${count+1}`,kind,category:"User-added procedural model",position:[-1+(count%4)*.45,0,1.2+Math.floor(count/4)*.45],color:kind==="lamp"?0xfbbf24:kind==="plant"?0x34d399:0x64748b,watts:kind==="lamp"?36:kind==="box"?120:0};
-    twin.addDevice(item);
-    if(energyOn)updateEnergyView();
-    document.querySelector("#twinStatus").textContent=`Added ${item.name} to the room preview. Save the scene to persist it.`;
-    toast(`${item.name} added to the preview.`);
-  });
-  canvas.addEventListener("webgl-lost",()=>{document.querySelector("#twinStatus").textContent="The browser lost the WebGL context. Try reloading the page to restore the 3D preview.";});
-  canvas.addEventListener("webgl-restored",()=>{document.querySelector("#twinStatus").textContent="WebGL context restored.";});
-  updateEnergyView();
-} catch(error) {
-  document.querySelector("#twinStatus").textContent=`3D preview could not be initialized: ${error.message}`;
-  ["resetCamera","energyToggle","addAppliance","applyDimensions","scenarioReduction"].forEach((id)=>{document.querySelector(`#${id}`).disabled=true;});
-}
-document.querySelector("#saveScene").addEventListener("click",async()=>{
-  try{
-    if(!twin)throw new Error("The 3D scene is not available to save.");
-    await digitalTwinService.saveScene({id:storedScene?.id||"demo-room",...twin.serialize()});
-    toast("Scene saved by the configured backend.","success");
-  }
-  catch(error){toast(error.message,"error");}
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await auth.requireAuth();
+  if (!user) return;
+
+  await renderNavbar();
+  initSceneManager();
+  await loadProjects();
+  initUIListeners();
 });
-window.addEventListener("beforeunload",()=>twin?.dispose());
+
+function initSceneManager() {
+  const container = document.getElementById('twin-canvas-container');
+  if (!container) return;
+
+  sceneManager = new DigitalTwinSceneManager(container, onApplianceSelected);
+}
+
+async function loadProjects() {
+  try {
+    const res = await api.get('/projects');
+    const projects = Array.isArray(res) ? res : (res?.projects || res?.data || []);
+    const select = document.getElementById('twin-project-select');
+    select.innerHTML = '';
+
+    if (projects.length === 0) {
+      select.innerHTML = '<option value="">No projects available</option>';
+      UI.toast('Please create a project first from Dashboard', 'info');
+      return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('projectId') || localStorage.getItem('vt_active_project');
+    let defaultProj = projects[0];
+
+    projects.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p._id;
+      opt.textContent = `${p.name} (${p.roomType.replace('_', ' ')})`;
+      if (targetId && p._id === targetId) {
+        defaultProj = p;
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    currentProject = defaultProj;
+    select.value = defaultProj._id;
+    localStorage.setItem('vt_active_project', defaultProj._id);
+
+    await loadProjectScene(defaultProj._id);
+  } catch (err) {
+    UI.toast('Failed to load projects: ' + err.message, 'error');
+  }
+}
+
+async function loadProjectScene(projectId) {
+  try {
+    currentSceneData = await sceneManager.loadProjectScene(projectId);
+
+    // Sync room dimensions modal values
+    if (currentSceneData.roomDimensions) {
+      const { length, width, height } = currentSceneData.roomDimensions;
+      if (document.getElementById('dim-length')) document.getElementById('dim-length').value = length || 5;
+      if (document.getElementById('dim-width')) document.getElementById('dim-width').value = width || 4;
+      if (document.getElementById('dim-height')) document.getElementById('dim-height').value = height || 2.8;
+    }
+  } catch (err) {
+    UI.toast('Failed to load 3D scene: ' + err.message, 'error');
+  }
+}
+
+function onApplianceSelected(mesh) {
+  const inspector = document.getElementById('twin-inspector');
+  if (!mesh || !mesh.userData) {
+    inspector.classList.remove('active');
+    selectedDeviceObject = null;
+    return;
+  }
+
+  selectedDeviceObject = mesh;
+  const data = mesh.userData;
+
+  inspector.classList.add('active');
+
+  // Fill inspector
+  document.getElementById('insp-title').textContent = data.displayName || data.canonicalName || 'Device';
+  document.getElementById('insp-category').textContent = (data.category || 'Appliance').replace('_', ' ');
+  document.getElementById('insp-confidence').innerHTML = `<i class="bi bi-eye text-emerald me-1"></i>${Math.round((data.detectionConfidence || 0.85) * 100)}%`;
+
+  const sourceBadge = document.getElementById('insp-source-badge');
+  if (data.powerRatingVerified || data.powerRatingSource === 'user_entered') {
+    sourceBadge.innerHTML = `<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="bi bi-patch-check-fill me-1"></i>Verified</span>`;
+  } else {
+    sourceBadge.innerHTML = `<span class="badge bg-warning-subtle text-warning border border-warning-subtle"><i class="bi bi-cpu me-1"></i>AI Estimate</span>`;
+  }
+
+  const wattsInput = document.getElementById('insp-watts-input');
+  const hoursSlider = document.getElementById('insp-hours-range');
+  const hoursVal = document.getElementById('insp-hours-val');
+
+  if (data.isFitting) {
+    wattsInput.value = 0;
+    wattsInput.disabled = true;
+    document.getElementById('insp-save-watts-btn').disabled = true;
+    document.getElementById('insp-reset-watts-btn').disabled = true;
+    document.getElementById('insp-type-label').textContent = 'Passive Fitting (0W)';
+  } else {
+    wattsInput.value = data.powerRatingWatts || 75;
+    wattsInput.disabled = false;
+    document.getElementById('insp-save-watts-btn').disabled = false;
+    document.getElementById('insp-reset-watts-btn').disabled = false;
+    document.getElementById('insp-type-label').textContent = 'Rated Input Power';
+  }
+
+  const hours = data.dailyUsageHours || 8;
+  hoursSlider.value = hours;
+  hoursVal.textContent = `${hours} hrs/day`;
+
+  // Coordinates
+  document.getElementById('insp-pos-x').value = mesh.position.x.toFixed(2);
+  document.getElementById('insp-pos-y').value = mesh.position.y.toFixed(2);
+  document.getElementById('insp-pos-z').value = mesh.position.z.toFixed(2);
+
+  updateInspectorCalculations();
+}
+
+function updateInspectorCalculations() {
+  if (!selectedDeviceObject) return;
+  const watts = parseFloat(document.getElementById('insp-watts-input').value) || 0;
+  const hours = parseFloat(document.getElementById('insp-hours-range').value) || 0;
+  const tariff = Number(currentProject?.electricityTariffPerKwh || 8.0);
+
+  const dailyKwh = (watts * hours) / 1000;
+  const monthlyKwh = dailyKwh * 30;
+  const monthlyCost = monthlyKwh * tariff;
+
+  document.getElementById('insp-daily-kwh').textContent = `${dailyKwh.toFixed(2)} kWh`;
+  document.getElementById('insp-monthly-cost').textContent = `₹${Math.round(monthlyCost).toLocaleString()}`;
+}
+
+function initUIListeners() {
+  // Project switch
+  document.getElementById('twin-project-select')?.addEventListener('change', async (e) => {
+    const projectId = e.target.value;
+    if (!projectId) return;
+    localStorage.setItem('vt_active_project', projectId);
+    try {
+      const p = await api.get(`/projects/${projectId}`);
+      currentProject = p.project;
+      await loadProjectScene(projectId);
+    } catch (err) {
+      UI.toast('Failed to load project: ' + err.message, 'error');
+    }
+  });
+
+  // Close inspector
+  document.getElementById('btn-close-inspector')?.addEventListener('click', () => {
+    document.getElementById('twin-inspector').classList.remove('active');
+    selectedDeviceObject = null;
+  });
+
+  // Camera presets
+  document.getElementById('cam-iso')?.addEventListener('click', () => sceneManager?.cameraController?.setPreset('iso'));
+  document.getElementById('cam-top')?.addEventListener('click', () => sceneManager?.cameraController?.setPreset('top'));
+  document.getElementById('cam-front')?.addEventListener('click', () => sceneManager?.cameraController?.setPreset('front'));
+  document.getElementById('cam-reset')?.addEventListener('click', () => sceneManager?.cameraController?.setPreset('iso'));
+
+  // Visual mode toggles
+  const btnReal = document.getElementById('mode-realistic');
+  const btnHeat = document.getElementById('mode-heatmap');
+  const btnScen = document.getElementById('mode-scenario');
+
+  btnReal?.addEventListener('click', () => {
+    btnReal.classList.add('active');
+    btnHeat.classList.remove('active');
+    btnScen.classList.remove('active');
+    sceneManager?.setVisualMode('realistic');
+  });
+
+  btnHeat?.addEventListener('click', () => {
+    btnHeat.classList.add('active');
+    btnReal.classList.remove('active');
+    btnScen.classList.remove('active');
+    sceneManager?.setVisualMode('heatmap');
+  });
+
+  btnScen?.addEventListener('click', () => {
+    btnScen.classList.add('active');
+    btnReal.classList.remove('active');
+    btnHeat.classList.remove('active');
+    sceneManager?.setVisualMode('scenario');
+  });
+
+  // Slider hours live calc
+  const hoursSlider = document.getElementById('insp-hours-range');
+  hoursSlider?.addEventListener('input', (e) => {
+    document.getElementById('insp-hours-val').textContent = `${e.target.value} hrs/day`;
+    updateInspectorCalculations();
+  });
+
+  // Input watts live calc
+  document.getElementById('insp-watts-input')?.addEventListener('input', updateInspectorCalculations);
+
+  // Position inputs live update in Three.js scene
+  ['insp-pos-x', 'insp-pos-y', 'insp-pos-z'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', () => {
+      if (!selectedDeviceObject) return;
+      const x = parseFloat(document.getElementById('insp-pos-x').value) || 0;
+      const y = parseFloat(document.getElementById('insp-pos-y').value) || 0;
+      const z = parseFloat(document.getElementById('insp-pos-z').value) || 0;
+      selectedDeviceObject.position.set(x, y, z);
+    });
+  });
+
+  // Save Power Rating from 3D Inspector to MongoDB
+  document.getElementById('insp-save-watts-btn')?.addEventListener('click', async () => {
+    if (!selectedDeviceObject || !selectedDeviceObject.userData) return;
+    const deviceId = selectedDeviceObject.userData.deviceId || selectedDeviceObject.userData._id;
+    const watts = parseFloat(document.getElementById('insp-watts-input').value);
+    const hours = parseFloat(document.getElementById('insp-hours-range').value);
+
+    if (!watts || watts <= 0) {
+      UI.toast('Please enter a valid positive power rating (W)', 'error');
+      return;
+    }
+
+    const saveBtn = document.getElementById('insp-save-watts-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>';
+
+    try {
+      // 1. Update power rating
+      const res = await api.patch(`/devices/${deviceId}/power-rating`, {
+        powerRatingWatts: watts,
+        powerRatingSource: 'user_entered'
+      });
+
+      // 2. Also update daily usage hours if changed
+      await api.put(`/devices/${deviceId}`, {
+        dailyUsageHours: hours
+      });
+
+      // Update in-memory userData
+      selectedDeviceObject.userData.powerRatingWatts = watts;
+      selectedDeviceObject.userData.dailyUsageHours = hours;
+      selectedDeviceObject.userData.powerRatingSource = 'user_entered';
+      selectedDeviceObject.userData.powerRatingVerified = true;
+
+      // Update badge
+      document.getElementById('insp-source-badge').innerHTML = `
+        <span class="badge bg-success-subtle text-success border border-success-subtle">
+          <i class="bi bi-patch-check-fill me-1"></i>Verified
+        </span>
+      `;
+
+      UI.toast('Power rating and usage saved to database!', 'success');
+    } catch (err) {
+      UI.toast(err.message || 'Failed to save rating', 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="bi bi-check2"></i> Save Rating';
+    }
+  });
+
+  // Reset to reference estimate
+  document.getElementById('insp-reset-watts-btn')?.addEventListener('click', async () => {
+    if (!selectedDeviceObject || !selectedDeviceObject.userData) return;
+    const deviceId = selectedDeviceObject.userData.deviceId || selectedDeviceObject.userData._id;
+
+    try {
+      const res = await api.delete(`/devices/${deviceId}/power-rating`);
+      const updated = res.device;
+
+      selectedDeviceObject.userData.powerRatingWatts = updated.powerRatingWatts;
+      selectedDeviceObject.userData.powerRatingSource = updated.powerRatingSource;
+      selectedDeviceObject.userData.powerRatingVerified = false;
+
+      document.getElementById('insp-watts-input').value = updated.powerRatingWatts;
+      document.getElementById('insp-source-badge').innerHTML = `
+        <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+          <i class="bi bi-cpu me-1"></i>AI Estimate
+        </span>
+      `;
+
+      updateInspectorCalculations();
+      UI.toast('Power rating reset to reference estimate', 'info');
+    } catch (err) {
+      UI.toast(err.message || 'Failed to reset rating', 'error');
+    }
+  });
+
+  // Save full 3D layout to MongoDB
+  document.getElementById('btn-save-scene')?.addEventListener('click', async () => {
+    if (!currentProject || !sceneManager) return;
+    const saveBtn = document.getElementById('btn-save-scene');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    try {
+      const objects = sceneManager.objectsGroup.children.map((mesh) => ({
+        deviceId: mesh.userData?.deviceId || mesh.userData?._id,
+        name: mesh.userData?.displayName || mesh.userData?.canonicalName || 'Appliance',
+        canonicalName: mesh.userData?.canonicalName || 'generic',
+        category: mesh.userData?.category || 'cooling',
+        isFitting: !!mesh.userData?.isFitting,
+        position: {
+          x: mesh.position.x,
+          y: mesh.position.y,
+          z: mesh.position.z
+        },
+        rotation: {
+          x: mesh.rotation.x,
+          y: mesh.rotation.y,
+          z: mesh.rotation.z
+        },
+        scale: {
+          x: mesh.scale.x,
+          y: mesh.scale.y,
+          z: mesh.scale.z
+        }
+      }));
+
+      await api.put(`/digital-twin/project/${currentProject._id}/scene`, {
+        roomDimensions: currentSceneData?.roomDimensions || { length: 5, width: 4, height: 2.8 },
+        objects
+      });
+
+      UI.toast('3D room layout saved successfully!', 'success');
+    } catch (err) {
+      UI.toast(err.message || 'Failed to save layout', 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="bi bi-floppy me-1"></i> Save Layout';
+    }
+  });
+
+  // Room dimensions modal form
+  const dimForm = document.getElementById('form-room-dimensions');
+  dimForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentProject) return;
+
+    const length = parseFloat(document.getElementById('dim-length').value) || 5;
+    const width = parseFloat(document.getElementById('dim-width').value) || 4;
+    const height = parseFloat(document.getElementById('dim-height').value) || 2.8;
+    const theme = document.getElementById('dim-theme').value || 'modern_dark';
+
+    const saveDimBtn = document.getElementById('btn-save-dimensions');
+    saveDimBtn.disabled = true;
+    saveDimBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Applying...';
+
+    try {
+      await api.put(`/digital-twin/project/${currentProject._id}/dimensions`, {
+        roomDimensions: { length, width, height },
+        roomTheme: theme
+      });
+
+      sceneManager.updateDimensions({ length, width, height });
+      if (currentSceneData) {
+        currentSceneData.roomDimensions = { length, width, height };
+        currentSceneData.roomTheme = theme;
+      }
+
+      // Hide modal
+      const modalEl = document.getElementById('roomSettingsModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+
+      UI.toast('Room dimensions updated live!', 'success');
+    } catch (err) {
+      UI.toast(err.message || 'Failed to update dimensions', 'error');
+    } finally {
+      saveDimBtn.disabled = false;
+      saveDimBtn.innerHTML = 'Apply Dimensions';
+    }
+  });
+}

@@ -1,25 +1,83 @@
-export function buildRoom(THREE, scene, dimensions = { width:6, depth:4.5, height:2.8 }) {
-  const group = new THREE.Group();
-  const { width, depth, height } = dimensions;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(width,depth), new THREE.MeshStandardMaterial({ color:0x34445b, roughness:.82, metalness:.04 }));
-  floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; group.add(floor);
-  const wallMaterial = new THREE.MeshStandardMaterial({ color:0x23334a, roughness:.9, side:THREE.DoubleSide });
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(width,height), wallMaterial);
-  back.position.set(0,height/2,-depth/2); back.receiveShadow=true; group.add(back);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(depth,height), wallMaterial);
-  side.rotation.y = Math.PI/2; side.position.set(-width/2,height/2,0); group.add(side);
-  const windowFrame = new THREE.Mesh(new THREE.BoxGeometry(width*.32,height*.34,.055),new THREE.MeshStandardMaterial({color:0x91b8ce,roughness:.32,metalness:.16}));
-  windowFrame.position.set(width*.18,height*.62,-depth/2+.04); windowFrame.castShadow=true; group.add(windowFrame);
-  const windowGlass = new THREE.Mesh(new THREE.PlaneGeometry(width*.29,height*.31),new THREE.MeshStandardMaterial({color:0x89c9e8,emissive:0x1e536e,emissiveIntensity:.12,roughness:.2,metalness:.2,side:THREE.DoubleSide}));
-  windowGlass.position.set(width*.18,height*.62,-depth/2+.075); group.add(windowGlass);
-  const sill = new THREE.Mesh(new THREE.BoxGeometry(width*.36,.07,.14),new THREE.MeshStandardMaterial({color:0x62758d,roughness:.7}));
-  sill.position.set(width*.18,height*.445,-depth/2+.02); group.add(sill);
-  const trimMaterial = new THREE.MeshStandardMaterial({color:0x52647b,roughness:.78});
-  for (const [x,z,length,rotation] of [[0,-depth/2,width,0],[-width/2,0,depth,Math.PI/2]]) {
-    const trim=new THREE.Mesh(new THREE.BoxGeometry(length,.1,.07),trimMaterial);
-    trim.position.set(x,.05,z); trim.rotation.y=rotation; group.add(trim);
+export class RoomBuilder {
+  constructor(scene) {
+    this.scene = scene;
+    this.roomGroup = new THREE.Group();
+    this.scene.add(this.roomGroup);
   }
-  const grid = new THREE.GridHelper(width,12,0x7186a4,0x43536d); grid.position.y=.006; group.add(grid);
-  group.userData.dimensions = {width,depth,height}; scene.add(group);
-  return group;
+
+  buildRoom(dimensions = { length: 5.5, width: 4.5, height: 2.8 }, theme = {}) {
+    // Clear previous room geometry
+    this.roomGroup.clear();
+
+    const L = dimensions?.length || 5.5;
+    const W = dimensions?.width || 4.5;
+    const H = dimensions?.height || 2.8;
+
+    // Floor
+    const floorGeo = new THREE.PlaneGeometry(L, W);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: theme.floorColor || 0x1e293b,
+      roughness: 0.4,
+      metalness: 0.1
+    });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    this.roomGroup.add(floor);
+
+    // Floor subtle grid overlay
+    const grid = new THREE.GridHelper(Math.max(L, W), Math.round(Math.max(L, W) * 2), 0x334155, 0x1e293b);
+    grid.position.y = 0.005;
+    this.roomGroup.add(grid);
+
+    // Wall Material
+    const wallColor = theme.wallColor || 0x0f172a;
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: wallColor,
+      roughness: 0.7,
+      metalness: 0.05,
+      side: THREE.DoubleSide
+    });
+
+    // Back Wall (at -W/2)
+    const backWallGeo = new THREE.PlaneGeometry(L, H);
+    const backWall = new THREE.Mesh(backWallGeo, wallMat);
+    backWall.position.set(0, H / 2, -W / 2);
+    backWall.receiveShadow = true;
+    this.roomGroup.add(backWall);
+
+    // Left Wall (at -L/2)
+    const leftWallGeo = new THREE.PlaneGeometry(W, H);
+    const leftWall = new THREE.Mesh(leftWallGeo, wallMat);
+    leftWall.rotation.y = Math.PI / 2;
+    leftWall.position.set(-L / 2, H / 2, 0);
+    leftWall.receiveShadow = true;
+    this.roomGroup.add(leftWall);
+
+    // Right Wall (at +L/2)
+    const rightWallGeo = new THREE.PlaneGeometry(W, H);
+    const rightWall = new THREE.Mesh(rightWallGeo, wallMat);
+    rightWall.rotation.y = -Math.PI / 2;
+    rightWall.position.set(L / 2, H / 2, 0);
+    rightWall.receiveShadow = true;
+    this.roomGroup.add(rightWall);
+
+    // Baseboards / Trim lines
+    const trimMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.5 });
+    const trimBackGeo = new THREE.BoxGeometry(L, 0.08, 0.04);
+    const trimBack = new THREE.Mesh(trimBackGeo, trimMat);
+    trimBack.position.set(0, 0.04, -W / 2 + 0.02);
+    this.roomGroup.add(trimBack);
+
+    const trimSideGeo = new THREE.BoxGeometry(0.04, 0.08, W);
+    const trimLeft = new THREE.Mesh(trimSideGeo, trimMat);
+    trimLeft.position.set(-L / 2 + 0.02, 0.04, 0);
+    this.roomGroup.add(trimLeft);
+
+    const trimRight = new THREE.Mesh(trimSideGeo, trimMat);
+    trimRight.position.set(L / 2 - 0.02, 0.04, 0);
+    this.roomGroup.add(trimRight);
+
+    return this.roomGroup;
+  }
 }

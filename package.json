@@ -1,0 +1,13 @@
+{
+  "name": "visiontwin",
+  "version": "1.0.0",
+  "description": "VisionTwin - AI-Powered Energy Optimization & Digital Twin Platform",
+  "type": "module",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "test": "npm --prefix backend test",
+    "seed": "node scripts/seed-demo-data.js",
+    "check:model": "node scripts/check-model-api.js"
+  }
+}

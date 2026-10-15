@@ -1,1 +1,207 @@
-<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Devices · VisionTwin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"><link rel="stylesheet" href="css/variables.css"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/layout.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/dashboard.css"><link rel="stylesheet" href="css/responsive.css"></head><body><main id="appRoot"></main><div class="toast-stack" id="toastStack" aria-live="polite"></div><script type="module" src="js/pages/devices.page.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Device Inventory & Power Ratings — VisionTwin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/devices.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="container-fluid px-4 py-4 max-w-7xl">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bolder mb-1">
+          <i class="bi bi-plug text-emerald me-2"></i>Device Inventory & Power Ratings
+        </h2>
+        <p class="text-muted small mb-0">
+          Inspect detected appliances, input exact nameplate power ratings (Watts), and manage usage assumptions.
+        </p>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <select class="form-select bg-dark border-secondary" id="device-project-select" style="min-width: 230px;">
+          <option value="">Select Project...</option>
+        </select>
+        <button class="btn btn-vt-primary" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+          <i class="bi bi-plus-circle me-1"></i> Add Device Manually
+        </button>
+      </div>
+    </div>
+
+    <!-- Power Rating Feature Notice Banner -->
+    <div class="alert bg-dark border-emerald-subtle d-flex align-items-start gap-3 p-3 mb-4 rounded-3 shadow-sm">
+      <div class="fs-3 text-emerald"><i class="bi bi-patch-check-fill"></i></div>
+      <div class="flex-grow-1">
+        <div class="fw-semibold text-light mb-1">User-Controlled Electrical Power Rating Engine</div>
+        <p class="text-muted small mb-0">
+          Energy calculations are derived directly from rated input power (<span class="text-emerald fw-semibold">Watts</span>) and usage hours.
+          Input your appliance's nameplate wattage below to replace AI reference estimates with verified parameters. Passive fittings (switches/sockets) are tracked distinctly and draw 0 W.
+        </p>
+      </div>
+      <div class="d-none d-md-block text-end">
+        <span class="badge bg-emerald-subtle text-emerald border border-emerald-subtle px-2 py-1">
+          Formula: kWh = (W × h) / 1000
+        </span>
+      </div>
+    </div>
+
+    <!-- Summary KPI Bar -->
+    <div class="row g-3 mb-4" id="devices-kpi-bar">
+      <div class="col-6 col-md-3">
+        <div class="bg-card p-3 rounded-3 border border-secondary border-opacity-25">
+          <div class="text-muted small">Total Active Devices</div>
+          <div class="fs-4 fw-bold text-light" id="stat-active-count">0</div>
+          <div class="text-dim small" id="stat-fitting-count">+ 0 passive fittings</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="bg-card p-3 rounded-3 border border-secondary border-opacity-25">
+          <div class="text-muted small">Verified User Ratings</div>
+          <div class="fs-4 fw-bold text-emerald" id="stat-verified-count">0</div>
+          <div class="text-dim small" id="stat-verified-pct">0% calibrated</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="bg-card p-3 rounded-3 border border-secondary border-opacity-25">
+          <div class="text-muted small">Daily Consumption</div>
+          <div class="fs-4 fw-bold text-warning" id="stat-daily-kwh">0.00 <span class="fs-6 fw-normal text-muted">kWh</span></div>
+          <div class="text-dim small">Operating sum</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="bg-card p-3 rounded-3 border border-secondary border-opacity-25">
+          <div class="text-muted small">Est. Monthly Cost</div>
+          <div class="fs-4 fw-bold text-emerald" id="stat-monthly-cost">₹0</div>
+          <div class="text-dim small" id="stat-tariff-rate">Tariff: ₹8.00/kWh</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters & Search Toolbar -->
+    <div class="card bg-card border-secondary border-opacity-25 p-3 mb-4 shadow-sm">
+      <div class="row g-2 align-items-center">
+        <div class="col-12 col-md-4">
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary border-opacity-50 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control bg-dark border-secondary border-opacity-50" id="filter-search" placeholder="Search by name, brand, model..." />
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <select class="form-select bg-dark border-secondary border-opacity-50" id="filter-category">
+            <option value="">All Categories</option>
+            <option value="cooling">Cooling & Ventilation</option>
+            <option value="heating">Heating</option>
+            <option value="lighting">Lighting</option>
+            <option value="computing">Computing & IT</option>
+            <option value="entertainment">Entertainment</option>
+            <option value="cleaning">Cleaning & Laundry</option>
+            <option value="cooking">Cooking & Kitchen</option>
+            <option value="refrigeration">Refrigeration</option>
+            <option value="other">Other Appliances</option>
+            <option value="fitting">Passive Electrical Fittings</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-3">
+          <select class="form-select bg-dark border-secondary border-opacity-50" id="filter-rating-source">
+            <option value="">All Rating Sources</option>
+            <option value="user_entered">User Entered (Verified)</option>
+            <option value="manufacturer_specification">Manufacturer Spec</option>
+            <option value="reference_estimate">Reference Estimate</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+        <div class="col-12 col-md-2 text-md-end">
+          <button class="btn btn-vt-outline w-100" id="btn-reset-filters">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Devices Grid Container -->
+    <div id="devices-container" class="device-grid mb-5">
+      <div class="text-center py-5 text-muted col-span-full">
+        <div class="spinner-border text-emerald mb-2" role="status"></div>
+        <div>Loading device inventory...</div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Add Device Modal -->
+  <div class="modal fade" id="addDeviceModal" tabindex="-1" aria-labelledby="addDeviceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-card border-secondary">
+        <div class="modal-header border-secondary border-opacity-25">
+          <h5 class="modal-title" id="addDeviceModalLabel">
+            <i class="bi bi-plus-circle text-emerald me-2"></i>Add Appliance Manually
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="form-add-device">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Device Display Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="add-name" placeholder="e.g. Master Bedroom Ceiling Fan" required />
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Category <span class="text-danger">*</span></label>
+                <select class="form-select" id="add-category" required>
+                  <option value="cooling">Cooling & Fans</option>
+                  <option value="lighting">Lighting & Lamps</option>
+                  <option value="computing">Computers & Workstations</option>
+                  <option value="entertainment">TV & Entertainment</option>
+                  <option value="refrigeration">Refrigeration</option>
+                  <option value="cooking">Cooking & Kitchen</option>
+                  <option value="heating">Heating & Geysers</option>
+                  <option value="cleaning">Washing & Cleaning</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Power Rating (Watts) <span class="text-danger">*</span></label>
+                <input type="number" class="form-control font-monospace" id="add-watts" min="1" max="25000" step="1" placeholder="e.g. 75" required />
+                <div class="form-text small">Rated wattage from nameplate or label.</div>
+              </div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Daily Usage (Hours/Day)</label>
+                <input type="number" class="form-control font-monospace" id="add-hours" min="0" max="24" step="0.5" value="8" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Days Used Per Month</label>
+                <input type="number" class="form-control font-monospace" id="add-days" min="1" max="31" step="1" value="30" />
+              </div>
+            </div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Manufacturer (Optional)</label>
+                <input type="text" class="form-control" id="add-manufacturer" placeholder="e.g. Havells / Crompton" />
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Model (Optional)</label>
+                <input type="text" class="form-control" id="add-model" placeholder="e.g. Stealth Air 1200" />
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary border-opacity-25">
+            <button type="button" class="btn btn-vt-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-vt-primary" id="btn-submit-add-device">Add Appliance</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/pages/devices.page.js"></script>
+</body>
+</html>

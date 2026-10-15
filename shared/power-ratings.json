@@ -1,0 +1,126 @@
+{
+  "referenceRatings": {
+    "ceiling_fan": {
+      "defaultWatts": 75,
+      "typicalRange": [50, 90],
+      "defaultDailyHours": 8,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "Standard BLDC fans consume 28-35W; conventional induction fans consume 70-80W."
+    },
+    "air_conditioner": {
+      "defaultWatts": 1500,
+      "typicalRange": [900, 2200],
+      "defaultDailyHours": 6,
+      "defaultDaysPerMonth": 30,
+      "isVariable": true,
+      "notes": "Actual draw varies by compressor load, room insulation, and thermostat setpoint. Inverter ACs modulate power between 300W and 1800W."
+    },
+    "refrigerator": {
+      "defaultWatts": 150,
+      "typicalRange": [100, 300],
+      "defaultDailyHours": 24,
+      "defaultDaysPerMonth": 30,
+      "isVariable": true,
+      "notes": "Runs 24 hours/day with intermittent compressor cycles (approx. 30-50% duty cycle, effective average draw 60-100W)."
+    },
+    "television": {
+      "defaultWatts": 100,
+      "typicalRange": [50, 180],
+      "defaultDailyHours": 4,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "Modern 43-55 inch 4K LED TVs draw 70-110W. OLED draws 100-160W."
+    },
+    "laptop": {
+      "defaultWatts": 65,
+      "typicalRange": [45, 120],
+      "defaultDailyHours": 6,
+      "defaultDaysPerMonth": 26,
+      "isVariable": true,
+      "notes": "Rated power adapter is usually 65W; actual active consumption is typically 20-45W."
+    },
+    "desktop_computer": {
+      "defaultWatts": 200,
+      "typicalRange": [120, 500],
+      "defaultDailyHours": 5,
+      "defaultDaysPerMonth": 26,
+      "isVariable": true,
+      "notes": "Includes monitor and system unit. Gaming systems may draw 350-600W under load."
+    },
+    "lamp": {
+      "defaultWatts": 15,
+      "typicalRange": [5, 40],
+      "defaultDailyHours": 5,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "LED bulbs draw 7-18W; CFLs 15-25W; incandescent lamps 40-100W."
+    },
+    "microwave": {
+      "defaultWatts": 1200,
+      "typicalRange": [800, 1500],
+      "defaultDailyHours": 0.5,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "High instantaneous power draw, but brief daily run duration."
+    },
+    "washing_machine": {
+      "defaultWatts": 500,
+      "typicalRange": [300, 2000],
+      "defaultDailyHours": 1,
+      "defaultDaysPerMonth": 15,
+      "isVariable": true,
+      "notes": "Standard wash cycle draws 300-500W. Water heating cycles draw up to 2000W."
+    },
+    "water_heater": {
+      "defaultWatts": 2000,
+      "typicalRange": [1500, 3000],
+      "defaultDailyHours": 1.5,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "Instant or storage geysers draw 2000-3000W with thermostat auto-cut-off."
+    },
+    "router": {
+      "defaultWatts": 12,
+      "typicalRange": [6, 20],
+      "defaultDailyHours": 24,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "Wi-Fi routers operate continuously 24x7."
+    },
+    "iron": {
+      "defaultWatts": 1000,
+      "typicalRange": [750, 1600],
+      "defaultDailyHours": 0.5,
+      "defaultDaysPerMonth": 12,
+      "isVariable": false,
+      "notes": "Thermostatically controlled electric iron."
+    },
+    "generic": {
+      "defaultWatts": 100,
+      "typicalRange": [10, 1000],
+      "defaultDailyHours": 4,
+      "defaultDaysPerMonth": 30,
+      "isVariable": false,
+      "notes": "Generic electrical appliance baseline."
+    }
+  },
+  "validationLimits": {
+    "minPowerWatts": 1,
+    "maxPowerWatts": 20000,
+    "minDailyHours": 0.1,
+    "maxDailyHours": 24,
+    "minDaysPerMonth": 1,
+    "maxDaysPerMonth": 31,
+    "minTariff": 0.1,
+    "maxTariff": 200.0,
+    "defaultTariff": 8.0,
+    "currencySymbol": "₹"
+  },
+  "ratingSources": [
+    "user_entered",
+    "manufacturer_specification",
+    "reference_estimate",
+    "unknown"
+  ]
+}

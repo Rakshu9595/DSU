@@ -1,0 +1,42 @@
+{
+  "defaultRegion": "India",
+  "defaultEmissionFactor": 0.82,
+  "unit": "kg CO2e / kWh",
+  "regions": {
+    "India": {
+      "factor": 0.82,
+      "source": "Central Electricity Authority (CEA) CO2 Baseline Database",
+      "currency": "INR",
+      "currencySymbol": "₹",
+      "typicalTariff": 8.0
+    },
+    "United States": {
+      "factor": 0.385,
+      "source": "U.S. EPA eGRID National Average",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "typicalTariff": 0.16
+    },
+    "European Union": {
+      "factor": 0.25,
+      "source": "European Environment Agency (EEA)",
+      "currency": "EUR",
+      "currencySymbol": "€",
+      "typicalTariff": 0.28
+    },
+    "United Kingdom": {
+      "factor": 0.207,
+      "source": "UK Department for Energy Security and Net Zero",
+      "currency": "GBP",
+      "currencySymbol": "£",
+      "typicalTariff": 0.26
+    },
+    "Global Average": {
+      "factor": 0.475,
+      "source": "International Energy Agency (IEA)",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "typicalTariff": 0.15
+    }
+  }
+}

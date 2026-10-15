@@ -1,17 +1,111 @@
-import { mountApp, escapeHTML, toast } from "../core/ui.js";
-import { projectService } from "../services/project.service.js";
-import { deviceService } from "../services/device.service.js";
-import { energyService } from "../services/energy.service.js";
-import { formatCurrency } from "../utils/format-number.js";
-import { showFormDialog } from "../components/confirmation-dialog.js";
+import { auth } from '../core/auth.js';
+import { api } from '../core/api-client.js';
+import { UI } from '../core/ui.js';
+import { renderNavbar } from '../components/navbar.js';
 
-const id=new URLSearchParams(location.search).get("id")||"prj-001";
-mountApp("Project details",`<div id="detailsContent"></div>`);
-try {
-  const [project,devices,energy]=await Promise.all([projectService.get(id),deviceService.list(),energyService.overview()]);
-  if (!project) throw new Error("Project not found.");
-  document.querySelector("#detailsContent").innerHTML=`<div class="app-page-title"><div><a href="projects.html" class="small"><i class="bi bi-arrow-left"></i> All projects</a><h1 class="mt-3">${escapeHTML(project.name)}</h1><p>${escapeHTML(project.location)} · ${escapeHTML(project.room)} <span class="badge-soft ms-2">${escapeHTML(project.status)}</span></p></div><div class="quick-actions"><a class="btn-outline-soft" href="digital-twin.html"><i class="bi bi-box"></i> Open digital twin</a><a class="btn-primary-soft" href="upload.html?projectId=${encodeURIComponent(project.id)}"><i class="bi bi-camera-video"></i> Upload video</a></div></div><div class="metric-grid"><article class="card-surface metric-card"><span class="small text-muted">Mapped devices</span><div class="metric-value">${project.devices??devices.length}</div><span class="small text-muted">Sample inventory</span></article><article class="card-surface metric-card"><span class="small text-muted">Monthly energy estimate</span><div class="metric-value">${energy.monthlyKwh.toFixed(0)} <small class="fs-6">kWh</small></div><span class="small text-muted">Illustrative estimate</span></article><article class="card-surface metric-card"><span class="small text-muted">Estimated monthly cost</span><div class="metric-value">${formatCurrency(energy.monthlyCost)}</div><span class="small text-muted">Tariff ${energy.tariff}/kWh</span></article><article class="card-surface metric-card"><span class="small text-muted">Last updated</span><div class="metric-value fs-4">${escapeHTML(project.updatedAt)}</div><span class="small text-muted">Demo project record</span></article></div><div class="dashboard-grid mt-3"><section class="card-surface panel"><div class="panel-heading"><h2>Room information</h2><button id="editRoom" class="btn-outline-soft">Edit details</button></div><p>Room: <strong>${escapeHTML(project.room)}</strong></p><p>Location: <strong>${escapeHTML(project.location)}</strong></p><p class="small text-muted">Dimensions and scan records are not available for this demo project.</p></section><section class="card-surface panel"><div class="panel-heading"><h2>Analysis history</h2><span class="badge-soft">Sample</span></div><div class="project-row"><span class="project-avatar"><i class="bi bi-stars"></i></span><div><strong>Sample room analysis</strong><div class="small text-muted">Illustrative example · no upload was processed</div></div><a class="ms-auto small" href="analysis.html">Review</a></div><div class="project-row"><span class="project-avatar"><i class="bi bi-camera-video"></i></span><div><strong>Uploaded videos</strong><div class="small text-muted">No real uploads in demo mode</div></div><a class="ms-auto small" href="upload.html">Add video</a></div></section></div>`;
-  document.querySelector("#editRoom").addEventListener("click",async()=>{const values=await showFormDialog({title:"Edit room details",fields:[{name:"room",label:"Room name",value:project.room},{name:"location",label:"Location",value:project.location,required:false}]});if(values?.room.trim()){await projectService.update(project.id,{room:values.room.trim(),location:values.location.trim()});toast("Room details saved locally.","success");location.reload();}});
-} catch(error) {
-  document.querySelector("#detailsContent").innerHTML=`<div class="empty-state card-surface"><h1 class="h3">Project unavailable</h1><p>${escapeHTML(error.message)}</p><a class="btn-primary-soft" href="projects.html">Return to projects</a></div>`;
+let currentProject = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await auth.requireAuth();
+  if (!user) return;
+
+  await renderNavbar();
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const projectId = urlParams.get('id') || localStorage.getItem('vt_active_project');
+
+  if (!projectId) {
+    window.location.href = '/projects.html';
+    return;
+  }
+
+  await loadProjectDetails(projectId);
+  initFormListeners(projectId);
+});
+
+async function loadProjectDetails(projectId) {
+  try {
+    const [projRes, devRes, energyRes] = await Promise.all([
+      api.get(`/projects/${projectId}`),
+      api.get(`/devices?projectId=${projectId}`),
+      api.get(`/energy/project/${projectId}`)
+    ]);
+
+    currentProject = projRes.project;
+    localStorage.setItem('vt_active_project', currentProject._id);
+
+    // Populate header
+    document.getElementById('det-proj-name').textContent = currentProject.name;
+    document.getElementById('proj-crumb').textContent = currentProject.name;
+    document.getElementById('det-room-type').textContent = currentProject.roomType.replace('_', ' ');
+    document.getElementById('det-proj-desc').textContent = currentProject.description || 'VisionTwin room workspace with CV object detection.';
+
+    const dims = currentProject.roomDimensions || { length: 5, width: 4, height: 2.8 };
+    document.getElementById('det-dimensions').textContent = `${dims.length}×${dims.width}×${dims.height}m`;
+
+    const devices = devRes.devices || [];
+    document.getElementById('det-devices-count').textContent = devices.length;
+
+    const estimate = energyRes.estimate || energyRes;
+    document.getElementById('det-monthly-kwh').textContent = `${(estimate?.totalMonthlyEnergyKwh || 0).toFixed(1)} kWh`;
+    document.getElementById('det-monthly-cost').textContent = `₹${Math.round(estimate?.estimatedMonthlyCost || 0).toLocaleString()}`;
+
+    // Fill form
+    document.getElementById('edit-proj-name').value = currentProject.name;
+    document.getElementById('edit-proj-tariff').value = currentProject.electricityTariffPerKwh || 8.0;
+    document.getElementById('edit-proj-len').value = dims.length || 5.0;
+    document.getElementById('edit-proj-width').value = dims.width || 4.0;
+    document.getElementById('edit-proj-height').value = dims.height || 2.8;
+    document.getElementById('edit-proj-desc').value = currentProject.description || '';
+  } catch (err) {
+    UI.toast('Failed to load project details: ' + err.message, 'error');
+  }
+}
+
+function initFormListeners(projectId) {
+  const form = document.getElementById('form-edit-project');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('edit-proj-name').value.trim();
+    const tariff = parseFloat(document.getElementById('edit-proj-tariff').value) || 8.0;
+    const length = parseFloat(document.getElementById('edit-proj-len').value) || 5.0;
+    const width = parseFloat(document.getElementById('edit-proj-width').value) || 4.0;
+    const height = parseFloat(document.getElementById('edit-proj-height').value) || 2.8;
+    const desc = document.getElementById('edit-proj-desc').value.trim();
+
+    const btn = document.getElementById('btn-save-project-edit');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+    try {
+      await api.put(`/projects/${projectId}`, {
+        name,
+        electricityTariffPerKwh: tariff,
+        roomDimensions: { length, width, height },
+        description: desc
+      });
+
+      UI.toast('Project configuration updated!', 'success');
+      document.getElementById('det-proj-name').textContent = name;
+      document.getElementById('proj-crumb').textContent = name;
+      document.getElementById('det-dimensions').textContent = `${length}×${width}×${height}m`;
+    } catch (err) {
+      UI.toast(err.message || 'Failed to update project', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Update Configuration';
+    }
+  });
+
+  document.getElementById('btn-delete-this-project')?.addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to permanently delete this project?')) return;
+    try {
+      await api.delete(`/projects/${projectId}`);
+      UI.toast('Project deleted', 'info');
+      window.location.href = '/projects.html';
+    } catch (err) {
+      UI.toast('Failed to delete project: ' + err.message, 'error');
+    }
+  });
 }

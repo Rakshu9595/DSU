@@ -1,91 +1,112 @@
-import { appConfig } from "../config/app-config.js";
+import { AppConfig } from '../config/app-config.js';
 
-export class ApiError extends Error {
-  constructor(message, status = 0, details = null) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.details = details;
+export class ApiClient {
+  constructor(baseUrl = AppConfig.API_BASE_URL) {
+    this.baseUrl = baseUrl;
   }
-}
 
-function requestWithUploadProgress(url, { method, body, headers, signal, timeout, onUploadProgress }) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const cleanup = () => signal.removeEventListener("abort", abort);
-    const abort = () => xhr.abort();
-    signal.addEventListener("abort", abort, { once:true });
-    xhr.open(method, url, true);
-    xhr.withCredentials = true;
-    xhr.timeout = timeout;
-    headers.forEach((value, key) => xhr.setRequestHeader(key, value));
-    xhr.upload.addEventListener("progress", (event) => {
-      if (event.lengthComputable && event.total > 0) onUploadProgress(Math.round(event.loaded / event.total * 100));
-    });
-    xhr.addEventListener("load", () => {
-      cleanup();
-      let data = null;
-      if (xhr.responseText) {
-        try { data = JSON.parse(xhr.responseText); } catch { data = xhr.responseText; }
+  async request(endpoint, options = {}) {
+    const url = `${this.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+
+    const headers = {
+      ...(options.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.headers || {})
+    };
+
+    const config = {
+      ...options,
+      headers,
+      credentials: 'include' // Send session cookie
+    };
+
+    if (config.body && !(config.body instanceof FormData) && typeof config.body !== 'string') {
+      config.body = JSON.stringify(config.body);
+    }
+
+    try {
+      const res = await fetch(url, config);
+
+      // Handle file download
+      if (options.responseType === 'blob') {
+        if (!res.ok) throw new Error(`Download failed with status ${res.status}`);
+        return await res.blob();
       }
-      if (xhr.status < 200 || xhr.status >= 300) {
-        const message = data && typeof data === "object" && data.message ? data.message : `Request failed (${xhr.status})`;
-        reject(new ApiError(message, xhr.status, data));
-      } else resolve(data);
-    }, { once:true });
-    xhr.addEventListener("error", () => { cleanup(); reject(new ApiError("Unable to connect to the service.")); }, { once:true });
-    xhr.addEventListener("timeout", () => { cleanup(); reject(new ApiError("The request timed out.")); }, { once:true });
-    xhr.addEventListener("abort", () => {
-      cleanup();
-      reject(new ApiError(signal.reason?.message || "The request was cancelled."));
-    }, { once:true });
-    if (signal.aborted) abort();
-    else xhr.send(body);
-  });
-}
 
-export async function apiRequest(path, { method = "GET", body, headers = {}, signal, timeout = appConfig.requestTimeoutMs, onUploadProgress } = {}) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(new DOMException("Request timed out", "TimeoutError")), timeout);
-  const relayAbort = () => controller.abort(signal.reason);
-  signal?.addEventListener("abort", relayAbort, { once: true });
-  const requestHeaders = new Headers(headers);
-  let requestBody = body;
-  if (body !== undefined && !(body instanceof FormData) && typeof body !== "string") {
-    requestHeaders.set("Content-Type", "application/json");
-    requestBody = JSON.stringify(body);
-  }
-  const base = appConfig.apiBaseUrl.replace(/\/+$/, "");
-  const route = String(path).replace(/^\/+/, "");
-  const url = /^https?:\/\//i.test(base) ? new URL(route, `${base}/`).toString() : `${base}/${route}`;
-  try {
-    if (requestBody instanceof FormData && onUploadProgress) {
-      return await requestWithUploadProgress(url, { method, body:requestBody, headers:requestHeaders, signal:controller.signal, timeout, onUploadProgress });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        const error = new Error(data.message || `Request failed with status ${res.status}`);
+        error.status = res.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data.data !== undefined ? data.data : data;
+    } catch (err) {
+      if (err.status === 401 && !window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html') && window.location.pathname !== '/' && !window.location.pathname.endsWith('index.html')) {
+        // Redirect to login if unauthorized
+        window.location.href = '/login.html';
+      }
+      throw err;
     }
-    const response = await fetch(url, {
-      method, headers: requestHeaders, body: requestBody, credentials: "include", signal: controller.signal
+  }
+
+  get(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'GET' });
+  }
+
+  post(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'POST', body });
+  }
+
+  put(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'PUT', body });
+  }
+
+  patch(endpoint, body, options = {}) {
+    return this.request(endpoint, { ...options, method: 'PATCH', body });
+  }
+
+  delete(endpoint, options = {}) {
+    return this.request(endpoint, { ...options, method: 'DELETE' });
+  }
+
+  upload(endpoint, formData, onProgress) {
+    const url = `${this.baseUrl}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', url);
+      xhr.withCredentials = true;
+
+      if (xhr.upload && typeof onProgress === 'function') {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText || '{}');
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(data.data !== undefined ? data.data : data);
+          } else {
+            const error = new Error(data.message || `Upload failed with status ${xhr.status}`);
+            error.status = xhr.status;
+            error.data = data;
+            reject(error);
+          }
+        } catch (e) {
+          reject(new Error(`Failed to parse response: ${xhr.responseText}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network error during upload'));
+      xhr.send(formData);
     });
-    const raw = await response.text();
-    let data = null;
-    if (raw) {
-      try { data = JSON.parse(raw); } catch { data = raw; }
-    }
-    if (!response.ok) {
-      const message = data && typeof data === "object" && data.message ? data.message : `Request failed (${response.status})`;
-      throw new ApiError(message, response.status, data);
-    }
-    return data;
-  } catch (error) {
-    if (error.name === "AbortError" || error.name === "TimeoutError") throw new ApiError("The request was cancelled or timed out.", 0, error);
-    if (error instanceof ApiError) throw error;
-    throw new ApiError(error.message || "Unable to connect to the service.", 0, error);
-  } finally {
-    window.clearTimeout(timeoutId);
-    signal?.removeEventListener("abort", relayAbort);
   }
 }
 
-export function liveRequest(path, options) {
-  if (appConfig.mode !== "live") throw new Error("Live API requests are unavailable in demo mode.");
-  return apiRequest(path, options);
-}
+export const api = new ApiClient();

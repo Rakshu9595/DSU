@@ -1,0 +1,194 @@
+@import './variables.css';
+
+/* Device Grid Layout */
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Individual Device Card */
+.device-card {
+  background: var(--bg-card);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  transition: all var(--transition-normal);
+}
+
+.device-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--accent-cyan));
+  opacity: 0.8;
+}
+
+.device-card.tier-high::before {
+  background: linear-gradient(90deg, var(--accent-rose), #f97316);
+}
+.device-card.tier-medium::before {
+  background: linear-gradient(90deg, var(--accent-amber), #eab308);
+}
+.device-card.tier-low::before {
+  background: linear-gradient(90deg, var(--primary), var(--accent-cyan));
+}
+.device-card.tier-fitting::before {
+  background: linear-gradient(90deg, #64748b, #94a3b8);
+}
+
+.device-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--border-color-glow);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+}
+
+/* Device Card Header */
+.device-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.device-icon-wrapper {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-md);
+  background: rgba(30, 41, 59, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--primary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.device-title-area {
+  flex: 1;
+  margin-left: 0.85rem;
+}
+.device-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 0.15rem;
+  color: #ffffff;
+}
+.device-meta {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Power Rating Primary Box (CRITICAL UI) */
+.power-rating-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  margin: 1rem 0;
+  position: relative;
+}
+
+.power-rating-box.has-user-rating {
+  border-color: rgba(16, 185, 129, 0.6);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.power-rating-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.power-rating-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.power-input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.power-rating-input {
+  font-family: var(--font-mono);
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #34d399 !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border: 1px solid rgba(16, 185, 129, 0.4) !important;
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.65rem;
+  width: 130px;
+  text-align: right;
+}
+.power-rating-input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 12px var(--primary-glow) !important;
+}
+
+.power-unit {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.rating-source-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  margin-top: 0.65rem;
+  color: var(--text-dim);
+}
+
+/* Energy Metrics Mini Dashboard */
+.device-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  background: rgba(15, 23, 42, 0.5);
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.metric-mini-item {
+  text-align: center;
+}
+.metric-mini-label {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.metric-mini-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Card Actions Footer */
+.device-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 1rem;
+}

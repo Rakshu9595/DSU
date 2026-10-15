@@ -1,4 +1,0 @@
-.report-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:18px; padding:16px 0; border-bottom:1px solid var(--border); }
-.report-row:last-child { border-bottom:0; }
-.empty-state { padding:56px 20px; text-align:center; }
-.empty-state .icon-tile { margin-inline:auto; width:58px; height:58px; font-size:1.5rem; }

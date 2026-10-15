@@ -1,40 +1,207 @@
-import { mountApp, escapeHTML, toast } from "../core/ui.js";
-import { projectService } from "../services/project.service.js";
-import { confirmAction, showFormDialog } from "../components/confirmation-dialog.js";
+import { auth } from '../core/auth.js';
+import { api } from '../core/api-client.js';
+import { UI } from '../core/ui.js';
+import { renderNavbar } from '../components/navbar.js';
 
-mountApp("Projects", `<div class="app-page-title"><div><span class="demo-label">DEMO WORKSPACE</span><h1 class="mt-3">Your projects</h1><p>Organize rooms and building scans in one place.</p></div><button class="btn-primary-soft" id="createProject"><i class="bi bi-plus-lg"></i> Create project</button></div><div class="card-surface panel mb-3"><div class="d-flex flex-wrap gap-3"><input class="form-control flex-grow-1" id="projectSearch" placeholder="Search projects…" aria-label="Search projects"><select class="form-select" id="projectFilter" style="max-width:200px"><option value="">All statuses</option><option>Analyzed</option><option>In review</option><option>Ready to scan</option></select><button class="btn-outline-soft" id="projectView" aria-label="Toggle project view"><i class="bi bi-list"></i> List view</button></div></div><div class="row g-3" id="projectGrid"></div>`);
+let projectsList = [];
 
-let projects = await projectService.list();
-let listMode = false;
-function render() {
-  const query = document.querySelector("#projectSearch").value.trim().toLowerCase();
-  const status = document.querySelector("#projectFilter").value;
-  const results = projects.filter((item) => `${item.name} ${item.location} ${item.room}`.toLowerCase().includes(query) && (!status || item.status === status));
-  const grid = document.querySelector("#projectGrid");
-  grid.className = listMode ? "d-grid gap-2" : "row g-3";
-  grid.innerHTML = results.length ? results.map((item) => `<div class="${listMode?"":"col-sm-6 col-xl-4"}"><article class="card-surface panel h-100"><div class="d-flex justify-content-between"><span class="icon-tile"><i class="bi bi-house"></i></span><span class="badge-soft">${escapeHTML(item.status)}</span></div><h2 class="h5 mt-4">${escapeHTML(item.name)}</h2><p class="small mb-3"><i class="bi bi-geo-alt me-1"></i>${escapeHTML(item.location)} · ${escapeHTML(item.room)}</p><div class="d-flex justify-content-between small text-muted"><span>${item.devices} mapped devices</span><span>Updated ${escapeHTML(item.updatedAt)}</span></div><div class="d-flex gap-2 mt-4"><a class="btn-primary-soft flex-grow-1" href="project-details.html?id=${encodeURIComponent(item.id)}">Open project <i class="bi bi-arrow-right"></i></a><button class="btn-outline-soft" data-edit="${escapeHTML(item.id)}" aria-label="Edit project"><i class="bi bi-pencil"></i></button><button class="btn-outline-soft" data-delete="${escapeHTML(item.id)}" aria-label="Delete project"><i class="bi bi-trash"></i></button></div></article></div>`).join("") : `<div class="col-12"><div class="card-surface empty-state"><span class="icon-tile"><i class="bi bi-search"></i></span><h2 class="h5 mt-3">No projects found</h2><p>Try another search or create a new project.</p><button class="btn-primary-soft" id="emptyCreate">Create project</button></div></div>`;
-  grid.querySelector("#emptyCreate")?.addEventListener("click", createProject);
-}
-async function createProject() {
-  const values = await showFormDialog({title:"Create a project",fields:[{name:"name",label:"Project name",required:true},{name:"location",label:"Location",required:false},{name:"room",label:"Room",required:false}]});
-  if (!values) return;
-  try { await projectService.create({ name:values.name.trim(), location:values.location.trim()||"Location not set", room:values.room.trim()||"Room to be defined" }); projects = await projectService.list(); render(); toast("Demo project created and saved in this browser.","success"); }
-  catch (error) { toast(error.message,"error"); }
-}
-document.querySelector("#createProject").addEventListener("click", createProject);
-document.querySelector("#projectSearch").addEventListener("input", render);
-document.querySelector("#projectFilter").addEventListener("change", render);
-document.querySelector("#projectView").addEventListener("click", (event) => { listMode=!listMode; event.currentTarget.innerHTML=`<i class="bi bi-${listMode?"grid":"list"}"></i> ${listMode?"Grid":"List"} view`; render(); });
-document.querySelector("#projectGrid").addEventListener("click", async (event) => {
-  const editId=event.target.closest("[data-edit]")?.dataset.edit;
-  const deleteId=event.target.closest("[data-delete]")?.dataset.delete;
-  if (editId) {
-    const project=projects.find((item)=>item.id===editId);
-    const values=await showFormDialog({title:"Edit project",fields:[{name:"name",label:"Project name",value:project?.name},{name:"location",label:"Location",value:project?.location,required:false},{name:"room",label:"Room",value:project?.room,required:false}]});
-    if (values?.name.trim()) { await projectService.update(editId,{name:values.name.trim(),location:values.location.trim(),room:values.room.trim()}); projects=await projectService.list(); render(); toast("Project updated locally.","success"); }
-  }
-  if (deleteId && await confirmAction("This removes the project from this browser's demo data.","Delete project")) {
-    await projectService.remove(deleteId); projects=await projectService.list(); render(); toast("Demo project deleted.","success");
-  }
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await auth.requireAuth();
+  if (!user) return;
+
+  await renderNavbar();
+  await loadProjects();
+  initFormListener();
 });
-render();
+
+async function loadProjects() {
+  const container = document.getElementById('projects-grid');
+  container.innerHTML = `
+    <div class="col-12 text-center py-5 text-muted">
+      <div class="spinner-border text-emerald mb-2" role="status"></div>
+      <div>Loading your projects...</div>
+    </div>
+  `;
+
+  try {
+    const res = await api.get('/projects');
+    projectsList = Array.isArray(res) ? res : (res?.projects || res?.data || []);
+    renderProjects();
+  } catch (err) {
+    container.innerHTML = `
+      <div class="col-12 alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Failed to load projects: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+
+function renderProjects() {
+  const container = document.getElementById('projects-grid');
+  container.innerHTML = '';
+
+  if (projectsList.length === 0) {
+    container.innerHTML = `
+      <div class="col-12">
+        <div class="card bg-card border-secondary border-opacity-25 p-5 text-center">
+          <i class="bi bi-folder-x fs-1 text-muted mb-3"></i>
+          <h4 class="fw-bold">No Projects Found</h4>
+          <p class="text-muted small mb-4">Create your first room workspace to start uploading video and configuring appliances.</p>
+          <div>
+            <button class="btn btn-vt-primary" data-bs-toggle="modal" data-bs-target="#createProjectModal">
+              <i class="bi bi-plus-lg me-1"></i> Create Project
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  projectsList.forEach((proj) => {
+    const col = document.createElement('div');
+    col.className = 'col-md-6 col-lg-4';
+    const dims = proj.roomDimensions || { length: 5, width: 4, height: 2.8 };
+
+    col.innerHTML = `
+      <div class="card bg-card border-secondary border-opacity-25 h-100 shadow-sm d-flex flex-column hover-lift">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <span class="badge bg-dark border border-secondary text-capitalize mb-2">
+                ${proj.roomType.replace('_', ' ')}
+              </span>
+              <h5 class="fw-bold mb-1 text-light">${escapeHtml(proj.name)}</h5>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-link text-dim p-0" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end border-secondary">
+                <li><button class="dropdown-item text-danger btn-delete-proj" data-id="${proj._id}"><i class="bi bi-trash me-2"></i>Delete Project</button></li>
+              </ul>
+            </div>
+          </div>
+
+          <p class="text-muted small mb-3 text-truncate-2">
+            ${escapeHtml(proj.description || 'VisionTwin room workspace with automated YOLO CV detection.')}
+          </p>
+
+          <div class="row g-2 text-muted small border-top border-secondary border-opacity-25 pt-3 mb-3">
+            <div class="col-6">
+              <span class="text-dim">Tariff:</span>
+              <span class="font-monospace text-emerald ms-1 fw-bold">₹${Number(proj.electricityTariffPerKwh || 8).toFixed(2)}</span>
+            </div>
+            <div class="col-6 text-end">
+              <span class="text-dim">Room:</span>
+              <span class="font-monospace text-light ms-1">${dims.length}×${dims.width}×${dims.height}m</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-footer bg-dark border-secondary border-opacity-25 p-3 d-flex justify-content-between gap-2 mt-auto">
+          <button class="btn btn-vt-outline btn-sm flex-grow-1 btn-open-dash" data-id="${proj._id}">
+            <i class="bi bi-grid-1x2 me-1"></i> Dashboard
+          </button>
+          <button class="btn btn-vt-primary btn-sm flex-grow-1 btn-open-twin" data-id="${proj._id}">
+            <i class="bi bi-box me-1"></i> 3D Twin
+          </button>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(col);
+  });
+
+  // Attach button events
+  container.querySelectorAll('.btn-open-dash').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      localStorage.setItem('vt_active_project', id);
+      window.location.href = '/dashboard.html';
+    });
+  });
+
+  container.querySelectorAll('.btn-open-twin').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-id');
+      localStorage.setItem('vt_active_project', id);
+      window.location.href = '/digital-twin.html';
+    });
+  });
+
+  container.querySelectorAll('.btn-delete-proj').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.getAttribute('data-id');
+      if (!confirm('Are you sure you want to permanently delete this project and all its devices?')) return;
+
+      try {
+        await api.delete(`/projects/${id}`);
+        UI.toast('Project deleted successfully', 'info');
+        projectsList = projectsList.filter((p) => p._id !== id);
+        renderProjects();
+      } catch (err) {
+        UI.toast('Failed to delete project: ' + err.message, 'error');
+      }
+    });
+  });
+}
+
+function initFormListener() {
+  const form = document.getElementById('form-create-project');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('new-proj-name').value.trim();
+    const roomType = document.getElementById('new-proj-room-type').value;
+    const tariff = parseFloat(document.getElementById('new-proj-tariff').value) || 8.0;
+    const length = parseFloat(document.getElementById('new-proj-len').value) || 5.0;
+    const width = parseFloat(document.getElementById('new-proj-width').value) || 4.0;
+    const height = parseFloat(document.getElementById('new-proj-height').value) || 2.8;
+    const desc = document.getElementById('new-proj-desc').value.trim();
+
+    if (!name) return;
+
+    const btn = document.getElementById('btn-submit-project');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Creating...';
+
+    try {
+      const payload = {
+        name,
+        roomType,
+        electricityTariffPerKwh: tariff,
+        roomDimensions: { length, width, height },
+        description: desc
+      };
+
+      const res = await api.post('/projects', payload);
+      UI.toast('Project created successfully!', 'success');
+
+      // Close modal
+      const modalEl = document.getElementById('createProjectModal');
+      const modal = bootstrap.Modal.getInstance(modalEl);
+      if (modal) modal.hide();
+      form.reset();
+
+      localStorage.setItem('vt_active_project', res.project._id);
+      projectsList.unshift(res.project);
+      renderProjects();
+    } catch (err) {
+      UI.toast(err.message || 'Failed to create project', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Create Project';
+    }
+  });
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}

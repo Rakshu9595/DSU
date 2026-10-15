@@ -1,1 +1,227 @@
-<!doctype html><html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Energy analysis · VisionTwin</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"><link rel="stylesheet" href="css/variables.css"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/layout.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/energy.css"><link rel="stylesheet" href="css/responsive.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script></head><body><main id="appRoot"></main><div class="toast-stack" id="toastStack" aria-live="polite"></div><script type="module" src="js/pages/energy-analysis.page.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Energy Analytics & Scenarios — VisionTwin</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/variables.css" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="stylesheet" href="/css/dashboard.css" />
+  <link rel="stylesheet" href="/css/components.css" />
+</head>
+<body>
+  <div id="navbar-container"></div>
+
+  <main class="container-fluid px-4 py-4 max-w-7xl">
+    <!-- Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      <div>
+        <h2 class="fw-bolder mb-1">
+          <i class="bi bi-graph-up-arrow text-emerald me-2"></i>Energy Analytics & Scenario Modeling
+        </h2>
+        <p class="text-muted small mb-0">
+          Mathematical consumption breakdown derived from rated power (W), operating assumptions, and electricity tariffs.
+        </p>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <select class="form-select bg-dark border-secondary" id="energy-project-select" style="min-width: 220px;">
+          <option value="">Select Project...</option>
+        </select>
+        <button class="btn btn-vt-primary" id="btn-recalculate-all">
+          <i class="bi bi-arrow-clockwise me-1"></i> Recalculate
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Tariff Config Card -->
+    <div class="card bg-card border-secondary border-opacity-25 p-3 mb-4 shadow-sm">
+      <div class="row g-3 align-items-center">
+        <div class="col-md-4">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-cash-coin fs-4 text-emerald"></i>
+            <div>
+              <div class="fw-semibold text-light">Project Electricity Tariff</div>
+              <div class="text-muted small">Standard utility billing rate per unit</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text bg-dark border-secondary text-muted">₹ / kWh</span>
+            <input type="number" class="form-control font-monospace bg-dark border-secondary" id="tariff-input" step="0.25" min="0.5" max="50" value="8.0" />
+            <button class="btn btn-vt-outline" id="btn-save-tariff">Update Tariff</button>
+          </div>
+        </div>
+        <div class="col-md-3 text-md-end">
+          <span class="badge bg-dark border border-secondary text-muted px-2 py-2">
+            <i class="bi bi-globe-americas text-emerald me-1"></i>Carbon Factor: 0.82 kg CO₂/kWh
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPI Metric Cards Grid -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="card bg-card border-secondary border-opacity-25 p-3">
+          <div class="text-muted small">Daily Consumption</div>
+          <div class="fs-3 fw-bold text-light" id="kpi-daily-kwh">-- <span class="fs-6 fw-normal text-muted">kWh</span></div>
+          <div class="text-dim small" id="kpi-daily-cost">₹-- / day</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card bg-card border-secondary border-opacity-25 p-3">
+          <div class="text-muted small">Monthly Consumption</div>
+          <div class="fs-3 fw-bold text-emerald" id="kpi-monthly-kwh">-- <span class="fs-6 fw-normal text-muted">kWh</span></div>
+          <div class="text-dim small">Standard 30-day baseline</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card bg-card border-secondary border-opacity-25 p-3">
+          <div class="text-muted small">Estimated Monthly Cost</div>
+          <div class="fs-3 fw-bold text-warning" id="kpi-monthly-cost">₹--</div>
+          <div class="text-dim small" id="kpi-active-appliances">-- active appliances</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card bg-card border-secondary border-opacity-25 p-3">
+          <div class="text-muted small">Carbon Footprint</div>
+          <div class="fs-3 fw-bold text-info" id="kpi-carbon-kg">-- <span class="fs-6 fw-normal text-muted">kg CO₂</span></div>
+          <div class="text-dim small">Estimated emissions / mo</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+      <!-- Energy Doughnut -->
+      <div class="col-lg-5">
+        <div class="card bg-card border-secondary border-opacity-25 p-3 h-100 shadow-sm">
+          <h5 class="fw-bold mb-3 d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-pie-chart text-emerald me-2"></i>Energy by Appliance</span>
+            <span class="badge bg-dark border border-secondary text-dim fs-7">Monthly Share</span>
+          </h5>
+          <div style="height: 280px; position: relative;">
+            <canvas id="chart-energy-doughnut"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost Bar Chart -->
+      <div class="col-lg-7">
+        <div class="card bg-card border-secondary border-opacity-25 p-3 h-100 shadow-sm">
+          <h5 class="fw-bold mb-3 d-flex align-items-center justify-content-between">
+            <span><i class="bi bi-bar-chart-line text-emerald me-2"></i>Monthly Electricity Cost by Device (₹)</span>
+            <span class="badge bg-dark border border-secondary text-dim fs-7">Cost Ranking</span>
+          </h5>
+          <div style="height: 280px; position: relative;">
+            <canvas id="chart-cost-bar"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabbed Section: Appliance Breakdown Table vs Scenario Simulation -->
+    <div class="card bg-card border-secondary border-opacity-25 p-4 shadow-sm mb-5">
+      <ul class="nav nav-pills mb-4" id="energyTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-breakdown" data-bs-toggle="pill" data-bs-target="#content-breakdown" type="button" role="tab">
+            <i class="bi bi-table me-1"></i> Detailed Appliance Table
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-scenarios" data-bs-toggle="pill" data-bs-target="#content-scenarios" type="button" role="tab">
+            <i class="bi bi-sliders me-1"></i> What-If Scenario Simulation
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content" id="energyTabsContent">
+        <!-- Tab 1: Detailed Breakdown Table -->
+        <div class="tab-pane fade show active" id="content-breakdown" role="tabpanel">
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle mb-0" id="breakdown-table">
+              <thead>
+                <tr class="text-muted small text-uppercase">
+                  <th>Appliance</th>
+                  <th>Category</th>
+                  <th class="text-end">Power (W)</th>
+                  <th class="text-end">Daily Hours</th>
+                  <th class="text-end">Daily kWh</th>
+                  <th class="text-end">Monthly kWh</th>
+                  <th class="text-end">Monthly Cost</th>
+                  <th class="text-center">Rating Source</th>
+                </tr>
+              </thead>
+              <tbody id="breakdown-table-body">
+                <tr>
+                  <td colspan="8" class="text-center py-4 text-muted">Loading breakdown...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2: Interactive Scenario Simulation (Section 4.J) -->
+        <div class="tab-pane fade" id="content-scenarios" role="tabpanel">
+          <div class="row g-4">
+            <div class="col-lg-7">
+              <h5 class="fw-bold mb-2">Simulate Operating Hour Reductions</h5>
+              <p class="text-muted small mb-3">
+                Adjust proposed daily hours for each appliance. The engine calculates potential energy and financial savings relative to your baseline.
+              </p>
+              <div id="scenario-device-rows" class="d-flex flex-column gap-3 mb-3">
+                <!-- Device sliders populated dynamically -->
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="card bg-dark border-emerald-subtle p-3 rounded-3">
+                <h5 class="fw-bold text-light mb-3">
+                  <i class="bi bi-lightning-charge-fill text-emerald me-1"></i>Simulated Monthly Savings
+                </h5>
+
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between text-muted small mb-1">
+                    <span>Baseline Consumption:</span>
+                    <span class="font-monospace text-light" id="scen-base-kwh">-- kWh</span>
+                  </div>
+                  <div class="d-flex justify-content-between text-muted small mb-1">
+                    <span>Proposed Consumption:</span>
+                    <span class="font-monospace text-light" id="scen-prop-kwh">-- kWh</span>
+                  </div>
+                  <hr class="border-secondary my-2" />
+                  <div class="d-flex justify-content-between text-emerald fw-bold fs-5">
+                    <span>Potential Energy Saved:</span>
+                    <span class="font-monospace" id="scen-diff-kwh">0.0 kWh</span>
+                  </div>
+                </div>
+
+                <div class="bg-card p-3 rounded-3 mb-3 border border-secondary border-opacity-25">
+                  <div class="text-muted small">Potential Monthly Cost Savings</div>
+                  <div class="fs-3 fw-bold text-warning font-monospace" id="scen-diff-cost">₹0</div>
+                  <div class="text-dim small" id="scen-diff-carbon">Reduces 0.0 kg CO₂ emissions</div>
+                </div>
+
+                <div style="height: 180px; position: relative;">
+                  <canvas id="chart-scenario-compare"></canvas>
+                </div>
+
+                <div class="text-dim small mt-3">
+                  <i class="bi bi-shield-exclamation me-1"></i>Hypothetical mathematical simulation based on entered ratings. Actual savings depend on usage discipline and variable loads.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script type="module" src="/js/pages/energy-analysis.page.js"></script>
+</body>
+</html>

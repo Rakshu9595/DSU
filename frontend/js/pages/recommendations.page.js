@@ -1,37 +1,221 @@
-import { mountApp, escapeHTML, toast } from "../core/ui.js";
-import { recommendationService } from "../services/recommendation.service.js";
-import { deviceService } from "../services/device.service.js";
-import { calculateEnergy, estimateDeviceSavings } from "../energy/energy-calculator.js";
-import { formatCurrency } from "../utils/format-number.js";
+import { auth } from '../core/auth.js';
+import { api } from '../core/api-client.js';
+import { UI } from '../core/ui.js';
+import { renderNavbar } from '../components/navbar.js';
 
-mountApp("Recommendations",`<div class="app-page-title"><div><span class="demo-label">ILLUSTRATIVE SUGGESTIONS</span><h1 class="mt-3">Ideas for using less</h1><p>Potential savings are estimates, not guarantees. Demo estimates use the tariff and runtime assumptions on Energy analysis.</p></div><a class="btn-outline-soft" href="energy-analysis.html"><i class="bi bi-sliders"></i> Compare scenarios</a></div><div class="d-flex flex-wrap gap-2 mb-3" id="recommendationFilters" role="group" aria-label="Filter recommendations"><button class="btn-primary-soft" data-filter="all" aria-pressed="true">All ideas</button></div><div class="recommendation-grid" id="recommendationGrid"></div>`);
-let items,devices;
-try {
-  [items,devices]=await Promise.all([recommendationService.list(),deviceService.list()]);
-  if(!Array.isArray(items)||!Array.isArray(devices))throw new TypeError("Recommendation and device inputs must be lists.");
-  devices.forEach((device)=>calculateEnergy(device.watts,device.hours));
-} catch(error) {
-  document.querySelector("#recommendationGrid").innerHTML=`<div class="alert alert-warning bg-transparent" role="alert">Recommendations could not be loaded: ${escapeHTML(error.message)}</div>`;
-  document.querySelector("#recommendationFilters").hidden=true;
-  toast(`Recommendations unavailable: ${error.message}`,"error");
+let currentProject = null;
+let recommendationsList = [];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  const user = await auth.requireAuth();
+  if (!user) return;
+
+  await renderNavbar();
+  await loadProjects();
+  initListeners();
+});
+
+async function loadProjects() {
+  try {
+    const res = await api.get('/projects');
+    const projects = Array.isArray(res) ? res : (res?.projects || res?.data || []);
+    const select = document.getElementById('rec-project-select');
+    select.innerHTML = '';
+
+    if (projects.length === 0) {
+      select.innerHTML = '<option value="">No projects available</option>';
+      return;
+    }
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetId = urlParams.get('id') || urlParams.get('projectId') || localStorage.getItem('vt_active_project');
+    let defaultProj = projects[0];
+
+    projects.forEach((p) => {
+      const opt = document.createElement('option');
+      opt.value = p._id;
+      opt.textContent = `${p.name} (${p.roomType.replace('_', ' ')})`;
+      if (targetId && p._id === targetId) {
+        defaultProj = p;
+        opt.selected = true;
+      }
+      select.appendChild(opt);
+    });
+
+    currentProject = defaultProj;
+    select.value = defaultProj._id;
+    localStorage.setItem('vt_active_project', defaultProj._id);
+
+    await loadRecommendations(defaultProj._id);
+  } catch (err) {
+    UI.toast('Failed to load projects: ' + err.message, 'error');
+  }
 }
-if(items&&devices) {
-const tariff=Number(localStorage.getItem("visiontwin-tariff")||9);
-const runtimeMultiplier=Number(localStorage.getItem("visiontwin-runtime-multiplier")||100)/100;
-const categories=["all",...new Set(items.map((item)=>item.category))];
-document.querySelector("#recommendationFilters").innerHTML=categories.map((category,index)=>`<button class="${index?"btn-outline-soft":"btn-primary-soft"}" data-filter="${escapeHTML(category)}" aria-pressed="${String(index===0)}">${index?escapeHTML(category):"All ideas"}</button>`).join("");
-function render(filter="all"){
-  const shown=items.filter((item)=>filter==="all"||item.category===filter);
-  document.querySelector("#recommendationGrid").innerHTML=shown.map((item)=>{
-    const percentage=Number(item.reductionPercent);
-    const estimate=Number.isFinite(percentage)?estimateDeviceSavings(devices,{deviceIds:item.affectedDeviceIds,reductionPercent:percentage,tariff,runtimeMultiplier}):null;
-    const savings=estimate?.monthlySavings??(Number.isFinite(Number(item.savings))?Number(item.savings):null);
-    const affected=Array.isArray(item.affectedDeviceIds)?devices.filter((device)=>item.affectedDeviceIds.includes(device.id)):[];
-    const assumption=estimate?`${Math.max(0,Math.min(100,percentage))}% reduction on ${affected.length?affected.map((device)=>escapeHTML(device.name)).join(", "):"modeled device usage"}; changes with tariff/runtime assumptions.`:savings===null?"No comparable device estimate is available.":"Potential backend estimate; verify against your actual usage.";
-    return `<article class="card-surface recommendation-card"><div class="d-flex justify-content-between"><span class="icon-tile"><i class="bi bi-${escapeHTML(item.icon)}"></i></span><span class="badge-soft badge-warning">${escapeHTML(item.priority)}</span></div><span class="eyebrow d-block mt-4">${escapeHTML(item.category)}</span><h2 class="h5 mt-2">${escapeHTML(item.title)}</h2><p class="small">${escapeHTML(item.detail)}</p><div class="savings-number">${savings===null?"—":`~${formatCurrency(savings)}`}<small class="fs-6 text-muted">${savings===null?"":" / month"}</small></div><div class="small text-muted">${assumption}</div><div class="d-flex gap-2 mt-4"><a class="btn-primary-soft flex-grow-1" href="energy-analysis.html">Try a scenario</a><button class="btn-outline-soft" data-feedback="${escapeHTML(item.id)}" aria-label="Mark ${escapeHTML(item.title)} as helpful" aria-pressed="false"><i class="bi bi-hand-thumbs-up"></i></button></div></article>`;
-  }).join("");
+
+async function loadRecommendations(projectId) {
+  const container = document.getElementById('recommendations-container');
+  container.innerHTML = `
+    <div class="card bg-card border-secondary border-opacity-25 p-5 text-center">
+      <div class="spinner-border text-emerald mb-2" role="status"></div>
+      <div>Loading recommendations...</div>
+    </div>
+  `;
+
+  try {
+    const res = await api.get(`/recommendations/project/${projectId}`);
+    recommendationsList = res.recommendations || [];
+    renderRecommendations();
+  } catch (err) {
+    container.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-exclamation-triangle me-2"></i>Failed to fetch recommendations: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
 }
-document.querySelector("#recommendationFilters").addEventListener("click",(event)=>{const button=event.target.closest("[data-filter]");if(!button)return;document.querySelectorAll("#recommendationFilters button").forEach((item)=>{const active=item===button;item.className=active?"btn-primary-soft":"btn-outline-soft";item.setAttribute("aria-pressed",String(active));});render(button.dataset.filter);});
-document.querySelector("#recommendationGrid").addEventListener("click",async(event)=>{const button=event.target.closest("[data-feedback]");if(!button)return;try{const result=await recommendationService.feedback(button.dataset.feedback,true);button.disabled=true;button.setAttribute("aria-pressed","true");button.innerHTML='<i class="bi bi-check2"></i>';toast(result.demo?"Thanks — feedback was not sent in demo mode.":"Thanks for your feedback.","success");}catch(error){toast(error.message,"error");}});
-render();
+
+function renderRecommendations() {
+  const container = document.getElementById('recommendations-container');
+  container.innerHTML = '';
+
+  if (recommendationsList.length === 0) {
+    container.innerHTML = `
+      <div class="card bg-card border-secondary border-opacity-25 p-5 text-center">
+        <i class="bi bi-magic fs-1 text-emerald mb-3"></i>
+        <h5 class="fw-bold">No AI Recommendations Generated Yet</h5>
+        <p class="text-muted small mb-4">Click "Generate AI Strategy" to analyze your project's power ratings and usage patterns.</p>
+        <div>
+          <button class="btn btn-vt-primary" id="btn-empty-generate-action">
+            <i class="bi bi-stars me-1"></i> Generate AI Strategy
+          </button>
+        </div>
+      </div>
+    `;
+    document.getElementById('btn-empty-generate-action')?.addEventListener('click', triggerGenerate);
+    return;
+  }
+
+  recommendationsList.forEach((rec) => {
+    const card = document.createElement('div');
+    card.className = 'card bg-card border-secondary border-opacity-25 p-4 shadow-sm';
+
+    const prioColor = rec.priority === 'high' ? 'danger' : rec.priority === 'medium' ? 'warning' : 'info';
+
+    const targetName = rec.targetDeviceName || rec.targetAppliance;
+    const costSaved = rec.estimatedCostSavings !== undefined ? rec.estimatedCostSavings : rec.estimatedSavings?.monthlyCost;
+    const kwhSaved = rec.estimatedPotentialSavingsKwh !== undefined ? rec.estimatedPotentialSavingsKwh : rec.estimatedSavings?.monthlyEnergyKwh;
+
+    card.innerHTML = `
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-2 mb-3">
+        <div>
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <span class="badge bg-${prioColor}-subtle text-${prioColor} border border-${prioColor}-subtle text-uppercase fw-bold">
+              ${rec.priority} Priority
+            </span>
+            <span class="badge bg-dark border border-secondary text-capitalize">
+              ${(rec.category || 'Efficiency').replace('_', ' ')}
+            </span>
+            ${targetName ? `<span class="badge bg-dark border border-emerald-subtle text-emerald"><i class="bi bi-plug me-1"></i>${escapeHtml(targetName)}</span>` : ''}
+          </div>
+          <h5 class="fw-bold text-light mb-0">${escapeHtml(rec.title)}</h5>
+        </div>
+
+        ${
+          costSaved !== undefined
+            ? `
+          <div class="text-md-end bg-dark p-2 rounded border border-secondary border-opacity-25">
+            <div class="text-dim small">Simulated Savings</div>
+            <div class="font-monospace text-emerald fw-bold">₹${Math.round(costSaved)} / mo</div>
+            <div class="text-dim small font-monospace">${Number(kwhSaved || 0).toFixed(1)} kWh</div>
+          </div>
+        `
+            : ''
+        }
+      </div>
+
+      <p class="text-muted small mb-3 leading-relaxed">
+        ${escapeHtml(rec.description)}
+      </p>
+
+      ${
+        rec.actionableSteps && rec.actionableSteps.length > 0
+          ? `
+        <div class="bg-dark p-3 rounded-3 mb-3 border border-secondary border-opacity-25">
+          <div class="fw-semibold text-light small mb-2"><i class="bi bi-check2-circle text-emerald me-1"></i>Recommended Action Steps:</div>
+          <ul class="mb-0 ps-3 small text-muted">
+            ${rec.actionableSteps.map((step) => `<li class="mb-1">${escapeHtml(step)}</li>`).join('')}
+          </ul>
+        </div>
+      `
+          : ''
+      }
+
+      <div class="d-flex justify-content-between align-items-center text-dim small border-top border-secondary border-opacity-25 pt-2">
+        <span><i class="bi bi-robot text-emerald me-1"></i>Synthesized by VisionTwin GenAI Provider</span>
+        <span>Confidence: ${Math.round((rec.confidenceScore || 0.9) * 100)}%</span>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+async function triggerGenerate() {
+  if (!currentProject) {
+    UI.toast('Please select an active project', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btn-generate-recs');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Analyzing Wattages & Patterns...';
+
+  const goal = document.getElementById('rec-goal-select')?.value || 'reduce_bill';
+  const customDirective = document.getElementById('rec-custom-directive')?.value.trim();
+
+  try {
+    const res = await api.post(`/recommendations/project/${currentProject._id}/generate`, {
+      userGoals: [goal],
+      customDirective
+    });
+
+    UI.toast('AI Optimization Strategy Generated!', 'success');
+    recommendationsList = Array.isArray(res) ? res : res.recommendations || res.data || [];
+    renderRecommendations();
+  } catch (err) {
+    UI.toast(err.message || 'Failed to generate recommendations', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-stars me-1"></i> Generate AI Strategy';
+  }
+}
+
+function initListeners() {
+  document.getElementById('rec-project-select')?.addEventListener('change', async (e) => {
+    const id = e.target.value;
+    if (!id) return;
+    localStorage.setItem('vt_active_project', id);
+    try {
+      const p = await api.get(`/projects/${id}`);
+      currentProject = p.project;
+      await loadRecommendations(id);
+    } catch (err) {
+      UI.toast('Failed to load project: ' + err.message, 'error');
+    }
+  });
+
+  document.getElementById('btn-generate-recs')?.addEventListener('click', triggerGenerate);
+  document.getElementById('btn-quick-refresh')?.addEventListener('click', () => {
+    if (currentProject) loadRecommendations(currentProject._id);
+  });
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
