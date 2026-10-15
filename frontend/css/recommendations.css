@@ -1,0 +1,8 @@
+.recommendation-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
+.recommendation-card { padding:22px; transition:transform .22s ease,border-color .22s ease; }
+.recommendation-card:hover { transform:translateY(-4px); border-color:var(--primary); }
+.savings-number { font:800 1.65rem Manrope,sans-serif; color:var(--green); letter-spacing:-.04em; }
+.recommendation-card .btn-outline-soft:focus-visible,.recommendation-card a:focus-visible,#recommendationFilters button:focus-visible { outline:2px solid var(--cyan); outline-offset:3px; }
+.recommendation-card .btn-outline-soft[aria-pressed="true"] { color:var(--green); border-color:var(--green); }
+@media(max-width:950px){.recommendation-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:620px){.recommendation-grid{grid-template-columns:1fr}}

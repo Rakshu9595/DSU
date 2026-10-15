@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="VisionTwin turns your space into an intelligent digital twin, making energy use visible and actionable.">
+  <title>VisionTwin — See Your Space. Understand Your Energy.</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/variables.css"><link rel="stylesheet" href="css/base.css"><link rel="stylesheet" href="css/layout.css"><link rel="stylesheet" href="css/components.css"><link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <header class="site-nav" id="siteNav"><div class="container-wide nav-inner">
+    <a class="brand" href="index.html" aria-label="VisionTwin home"><span class="brand-mark"><i class="bi bi-soundwave"></i></span>VisionTwin</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false"><i class="bi bi-list"></i></button>
+    <nav class="nav-links" id="publicNav" aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#features">Platform</a><a href="#insights">Insights</a><a href="#faq">FAQ</a></nav>
+    <div class="nav-actions"><button class="btn-quiet" id="themeToggle" aria-label="Toggle theme"><i class="bi bi-circle-half"></i></button><a class="btn-quiet" href="login.html">Log in</a><a class="btn-primary-soft" href="register.html">Get started <i class="bi bi-arrow-up-right"></i></a></div>
+  </div></header>
+  <main>
+    <section class="hero"><div class="container-wide hero-grid">
+      <div class="hero-copy">
+        <span class="demo-label mb-3">A clearer view of your energy</span>
+        <h1>See Your Space.<br><span class="gradient-text">Understand Your Energy.</span></h1>
+        <p class="mt-4">Turn a room video into a living digital twin. Discover what’s using power, understand the patterns, and find practical ways to use less.</p>
+        <div class="hero-actions"><a class="btn-primary-soft" href="register.html">Get started <i class="bi bi-arrow-right"></i></a><a class="btn-outline-soft" href="dashboard.html"><i class="bi bi-play-circle"></i> Explore demo</a></div>
+        <div class="d-flex flex-wrap gap-4 mt-4 small text-muted"><span><i class="bi bi-check2-circle text-success me-1"></i>Room-level insights</span><span><i class="bi bi-check2-circle text-success me-1"></i>Transparent estimates</span></div>
+      </div>
+      <div class="hero-visual" aria-label="Illustration of a room digital twin with detected devices">
+        <div class="hero-glow"></div><span class="orb orb-a"></span><span class="orb orb-b"></span>
+        <div class="preview-window"><div class="preview-room"><div class="room-window"></div><div class="room-sofa"></div><div class="room-lamp"></div><span class="detection-dot one"></span><span class="detection-dot two"></span><div class="position-absolute start-0 bottom-0 m-3 p-2 rounded-3 small" style="background:#080d19cc"><i class="bi bi-stars text-info me-1"></i>Room scan preview</div></div><div class="preview-footer"><div><strong>Living room</strong><div class="small text-muted">Digital twin · Demo</div></div><div class="text-end"><strong class="text-success">8 devices</strong><div class="small text-muted">identified</div></div></div></div>
+      </div>
+    </div></section>
+    <section class="container-wide pb-4"><div class="metric-grid reveal">
+      <div class="card-surface metric-card"><div class="text-muted small">Devices mapped</div><div class="metric-value">08</div><span class="metric-trend"><i class="bi bi-bounding-box"></i> Across your spaces</span></div>
+      <div class="card-surface metric-card"><div class="text-muted small">Monthly energy estimate</div><div class="metric-value">284 <small class="fs-6 text-muted">kWh</small></div><span class="metric-trend"><i class="bi bi-lightning-charge"></i> Clear usage breakdown</span></div>
+      <div class="card-surface metric-card"><div class="text-muted small">Potential monthly savings</div><div class="metric-value">₹640</div><span class="metric-trend"><i class="bi bi-arrow-down-right"></i> Based on demo scenarios</span></div>
+      <div class="card-surface metric-card"><div class="text-muted small">Insight confidence</div><div class="metric-value">94<small class="fs-6 text-muted">%</small></div><span class="metric-trend"><i class="bi bi-info-circle"></i> Illustrative demo metric</span></div>
+    </div><p class="text-end small text-muted mt-2 mb-0">Illustrative demo data — actual results depend on your room and usage.</p></section>
+    <section class="section" id="how-it-works"><div class="container-wide"><div class="section-heading reveal"><div class="eyebrow">From room to insight</div><h2 class="mt-3">A smarter way to see your space</h2><p>Bring the physical and digital together in a few simple steps. Stay in control of every assumption.</p></div>
+      <div class="feature-grid">
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-camera-video"></i></div><span class="eyebrow">01 · Capture</span><h3 class="h5 mt-2">Walk through your room</h3><p class="mb-0">Upload a short video walkthrough to start mapping the space and its visible appliances.</p></article>
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-cpu"></i></div><span class="eyebrow">02 · Understand</span><h3 class="h5 mt-2">Make devices visible</h3><p class="mb-0">Review detected objects and their estimated energy profiles, with clear confidence and assumptions.</p></article>
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-lightbulb"></i></div><span class="eyebrow">03 · Improve</span><h3 class="h5 mt-2">Explore better choices</h3><p class="mb-0">Compare practical scenarios and make informed decisions about your energy use.</p></article>
+      </div>
+    </div></section>
+    <section class="section pt-0" id="features"><div class="container-wide two-col">
+      <div class="reveal"><div class="eyebrow">AI-assisted discovery</div><h2 class="mt-3">Know what’s in the room.</h2><p class="mt-3">A visual inventory gives you a useful starting point: appliances, lighting, switches, and sockets in one place. Review and correct details before relying on the estimates.</p><a href="analysis.html" class="btn-outline-soft mt-2">See a sample analysis <i class="bi bi-arrow-right"></i></a></div>
+      <div class="card-surface panel reveal"><div class="panel-heading"><h3>Detection overview</h3><span class="badge-soft badge-success">Demo results</span></div><div class="d-flex justify-content-between py-3 border-bottom" style="border-color:var(--border)!important"><span><i class="bi bi-tv text-info me-2"></i>Television</span><strong>1 <small class="text-muted">· 96% confidence</small></strong></div><div class="d-flex justify-content-between py-3 border-bottom" style="border-color:var(--border)!important"><span><i class="bi bi-snow text-info me-2"></i>Air conditioner</span><strong>1 <small class="text-muted">· 91% confidence</small></strong></div><div class="d-flex justify-content-between py-3"><span><i class="bi bi-lightbulb text-info me-2"></i>Light fixtures</span><strong>4 <small class="text-muted">· 89% confidence</small></strong></div><small class="text-muted">Sample objects for product demonstration only.</small></div>
+    </div></section>
+    <section class="section pt-0" id="insights"><div class="container-wide">
+      <div class="section-heading reveal"><div class="eyebrow">One connected picture</div><h2 class="mt-3">Space, energy, and action</h2><p>From a room-level digital twin to clear usage trends, VisionTwin makes complicated information easier to work with.</p></div>
+      <div class="feature-grid">
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-box"></i></div><h3 class="h5">Explore a digital twin</h3><p>See a procedural 3D model of your room and explore device placement in a visual context.</p><a class="small fw-semibold" href="digital-twin.html">Open the 3D demo <i class="bi bi-arrow-up-right"></i></a></article>
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-graph-up-arrow"></i></div><h3 class="h5">Understand your usage</h3><p>Compare daily and monthly estimates, device breakdowns, and configurable tariff assumptions.</p><a class="small fw-semibold" href="energy-analysis.html">View energy insights <i class="bi bi-arrow-up-right"></i></a></article>
+        <article class="card-surface feature-card reveal"><div class="icon-tile mb-4"><i class="bi bi-stars"></i></div><h3 class="h5">Find your next step</h3><p>Explore actionable suggestions and estimate their impact before making a change.</p><a class="small fw-semibold" href="recommendations.html">Browse recommendations <i class="bi bi-arrow-up-right"></i></a></article>
+      </div>
+    </div></section>
+    <section class="section pt-0"><div class="container-wide"><div class="card-surface panel p-4 p-lg-5 reveal"><div class="two-col"><div><span class="demo-label">PRODUCT PREVIEW · DEMO DATA</span><h2 class="mt-3">Energy insights that make sense at a glance.</h2><p>Explore a sample workspace with projects, device estimates, and practical next steps. No backend is required for the demo.</p><a class="btn-primary-soft mt-2" href="dashboard.html">Explore the dashboard <i class="bi bi-arrow-right"></i></a></div><div class="metric-grid"><div class="card-surface metric-card"><span class="small text-muted">This month</span><div class="metric-value">284 <small class="fs-6">kWh</small></div><span class="metric-trend">Estimated</span></div><div class="card-surface metric-card"><span class="small text-muted">Energy cost</span><div class="metric-value">₹2,556</div><span class="small text-muted">At ₹9/kWh demo tariff</span></div></div></div></div></div></section>
+    <section class="section pt-0" id="faq"><div class="container-wide"><div class="section-heading reveal"><div class="eyebrow">Good to know</div><h2 class="mt-3">Frequently asked questions</h2></div><div class="accordion" id="faqList">
+      <div class="accordion-item card-surface mb-2"><h3 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faqOne">Is VisionTwin connected to a backend?</button></h3><div id="faqOne" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">This prototype runs in clearly labeled demo mode by default. The API client and service modules are structured for a future backend, but no server-side processing is claimed here.</div></div></div>
+      <div class="accordion-item card-surface mb-2"><h3 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faqTwo">How accurate are the energy estimates?</button></h3><div id="faqTwo" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">Demo values are illustrative. Real estimates require verified devices, usage assumptions, and a configured electricity tariff; they are not utility-meter readings.</div></div></div>
+      <div class="accordion-item card-surface"><h3 class="accordion-header"><button class="accordion-button collapsed" data-bs-toggle="collapse" data-bs-target="#faqThree">Can I change the assumptions?</button></h3><div id="faqThree" class="accordion-collapse collapse" data-bs-parent="#faqList"><div class="accordion-body text-muted">Yes. The demo energy page and settings let you explore tariff and runtime values stored locally in your browser.</div></div></div>
+    </div></div></section>
+  </main>
+  <footer class="site-footer"><div class="container-wide d-flex flex-wrap justify-content-between gap-2"><span>© <span data-year></span> VisionTwin</span><span>Understand your space. Make energy visible.</span><div><a href="login.html">Sign in</a> · <a href="register.html">Create account</a></div></div></footer>
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script><script type="module">import {initCommonUi} from "./js/core/ui.js"; initCommonUi();</script>
+</body></html>

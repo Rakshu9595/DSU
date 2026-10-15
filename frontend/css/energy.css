@@ -1,0 +1,12 @@
+.energy-hero { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:15px; }
+.energy-charts { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-top:18px; }
+.chart-container { position:relative; height:280px; }
+.scenario-row { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:16px; padding:14px 0; border-bottom:1px solid var(--border); }
+.chart-data { margin-top:12px; color:var(--muted); font-size:.82rem; }
+.chart-data summary { width:max-content; cursor:pointer; color:var(--primary); }
+.chart-data .table { margin:10px 0 0; color:var(--text); --bs-table-bg:transparent; --bs-table-color:var(--text); --bs-table-border-color:var(--border); }
+.chart-data .table th,.chart-data .table td { padding:7px 10px; font-size:.78rem; }
+.scenario-row:last-child { border-bottom:0; }
+@media(max-width:620px){.scenario-row{grid-template-columns:1fr auto;gap:6px 12px}.scenario-row strong:last-child{grid-column:2;text-align:right}.chart-container{height:240px}}
+@media(max-width:900px){.energy-hero{grid-template-columns:repeat(2,1fr)}.energy-charts{grid-template-columns:1fr}}
+@media(max-width:480px){.energy-hero{grid-template-columns:1fr}}

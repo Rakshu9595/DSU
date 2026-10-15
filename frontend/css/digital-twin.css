@@ -1,0 +1,14 @@
+.twin-layout { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; }
+.twin-stage { position:relative; min-height:560px; overflow:hidden; background:radial-gradient(ellipse at 50% 40%,#172b48,#080d19 74%); border:1px solid var(--border); border-radius:18px; }
+.twin-stage canvas { position:absolute; inset:0; width:100%; height:100%; }
+.twin-tools { position:absolute; z-index:2; top:14px; left:14px; display:flex; flex-wrap:wrap; gap:8px; }
+.twin-tools button { padding:8px 11px; color:var(--text); background:rgb(16 24 39 / 85%); border:1px solid var(--border); border-radius:10px; }
+.twin-panel { align-self:start; }
+.twin-stage canvas:focus-visible { outline:2px solid #67e8f9; outline-offset:-3px; }
+.twin-stage:has(canvas:focus-visible) { box-shadow:0 0 0 2px color-mix(in srgb,var(--cyan) 55%,transparent); }
+.twin-tools button { transition:transform .18s ease, background .18s ease; }
+.twin-tools button:hover { transform:translateY(-1px); background:rgb(31 41 59 / 95%); }
+.twin-tools button:focus-visible { outline:2px solid #67e8f9; outline-offset:2px; }
+.twin-panel hr { opacity:.7; }
+@media(max-width:520px){.twin-stage{min-height:340px}.twin-tools{top:9px;left:9px}.twin-tools button{font-size:.8rem;padding:7px 9px}}
+@media(max-width:920px){.twin-layout{grid-template-columns:1fr}.twin-stage{min-height:420px}}
